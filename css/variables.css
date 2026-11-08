@@ -1,0 +1,61 @@
+/* =====================================================================
+   Capital Challenge — variables de design
+   Direction « carte d'embarquement » : outremer, encre, mirabelle.
+   Les anciens noms de variables sont conservés pour compatibilité
+   (--teal = bleu principal, --gold = jaune mirabelle).
+   ===================================================================== */
+:root {
+  color-scheme: light;
+
+  --bg: #EEF1FB;
+  --bg-soft: #E4E9F8;
+  --panel: #FFFFFF;
+  --panel-2: #F6F8FE;
+  --panel-3: #DDE3F6;
+  --line: rgba(12, 26, 75, .10);
+  --line-strong: rgba(12, 26, 75, .22);
+
+  --ink: #0C1A4B;
+  --text: #0C1A4B;
+  --text-soft: #2B3A73;
+  --muted: #56628F;
+  --muted-2: #7C86AD;
+
+  --blue: #2438E0;
+  --blue-deep: #1727A8;
+  --blue-soft: rgba(36, 56, 224, .10);
+  --teal: var(--blue);
+  --teal-soft: var(--blue-soft);
+
+  --gold: #FFC61A;
+  --gold-strong: #FFD34D;
+  --gold-soft: rgba(255, 198, 26, .24);
+  --gold-ink: #7A5200;
+  --red: #D13A28;
+  --red-soft: rgba(209, 58, 40, .12);
+  --green: #0B7F57;
+  --green-soft: rgba(11, 127, 87, .13);
+  --violet: #5B3FD0;
+
+  --font-display: "Bricolage Grotesque", "Trebuchet MS", system-ui, sans-serif;
+  --font-body: "Figtree", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "Cascadia Mono", Consolas, monospace;
+
+  --radius: 16px;
+  --radius-sm: 10px;
+  --radius-lg: 24px;
+
+  --shadow: 0 18px 44px rgba(24, 36, 130, .18);
+  --shadow-soft: 0 1px 0 rgba(24, 36, 130, .05), 0 6px 18px rgba(24, 36, 130, .08);
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+
+  --header-h: 64px;
+  --maxw: 1120px;
+}

@@ -1,0 +1,235 @@
+/* =====================================================================
+   Capital Challenge — écrans
+   Élément mémorable : le tour de jeu est une carte d'embarquement
+   (bleu outremer, perforation, nom du pays en très grand).
+   ===================================================================== */
+
+/* Accueil ------------------------------------------------------------- */
+.hero {
+  display: grid; grid-template-columns: 1.15fr .85fr; gap: var(--space-6);
+  align-items: center; padding: var(--space-6) 0 var(--space-7);
+}
+.hero__eyebrow {
+  display: inline-flex; align-items: center; gap: 8px; margin-bottom: var(--space-4);
+  color: var(--blue); font-size: .95rem; font-weight: 700;
+}
+.hero__eyebrow::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--gold); }
+.hero__title { font-size: clamp(2.5rem, 6.4vw, 4.4rem); margin-bottom: var(--space-4); }
+.hero__title em { font-style: normal; color: inherit; }
+.hero__lead { color: var(--text-soft); font-size: 1.1rem; max-width: 50ch; }
+.hero__actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: var(--space-5); }
+.hero__facts { display: flex; gap: var(--space-5); flex-wrap: wrap; margin-top: var(--space-6); }
+.hero__fact strong { display: block; font-family: var(--font-display); font-size: 1.7rem; font-weight: 800; color: var(--ink); line-height: 1; }
+.hero__fact span { font-size: .85rem; color: var(--muted); }
+
+/* Carte du hero : billet bleu sur quadrillage de méridiens */
+.globe-card {
+  position: relative; display: grid; align-items: start; justify-items: center;
+  width: 100%; max-width: 380px; aspect-ratio: 4 / 5; margin: 0 auto;
+  border-radius: 26px; overflow: hidden; color: #fff; background-color: var(--blue);
+  background-image:
+    linear-gradient(90deg, rgba(255, 255, 255, .55) 50%, transparent 0),
+    linear-gradient(rgba(255, 255, 255, .09) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, .09) 1px, transparent 1px);
+  background-size: 12px 2px, 34px 34px, 34px 34px;
+  background-position: 0 68%, 0 0, 0 0;
+  background-repeat: repeat-x, repeat, repeat;
+  box-shadow: var(--shadow); transform: rotate(-2deg);
+}
+.globe-card::before, .globe-card::after {
+  content: ""; position: absolute; top: calc(68% - 13px);
+  width: 28px; height: 28px; border-radius: 50%; background: var(--bg);
+}
+.globe-card::before { left: -14px; }
+.globe-card::after { right: -14px; }
+.globe-card__center { position: relative; margin-top: 22%; padding: var(--space-4); text-align: center; }
+.globe-card__center .pin { display: block; margin-bottom: 8px; font-size: 2.6rem; }
+.globe-card__center strong { display: block; font-family: var(--font-display); font-size: 1.5rem; font-weight: 800; letter-spacing: -.02em; }
+.globe-card__center span { font-size: .88rem; color: rgba(255, 255, 255, .78); }
+.globe-card__orbit {
+  position: absolute; top: 14%; right: 16%; width: 12px; height: 12px;
+  border-radius: 50%; background: var(--gold); box-shadow: 0 0 0 6px rgba(255, 198, 26, .28);
+}
+.globe-card__orbit--2 {
+  top: auto; bottom: 14%; left: 18%; width: 10px; height: 10px;
+  background: #fff; box-shadow: 0 0 0 5px rgba(255, 255, 255, .25);
+}
+
+.feature-card { padding: var(--space-5); border-radius: var(--radius); border: 1px solid var(--line); background: var(--panel); }
+.feature-card__icon {
+  display: grid; place-items: center; width: 46px; height: 46px; margin-bottom: 12px;
+  border-radius: 12px; background: var(--blue-soft); font-size: 1.4rem;
+}
+.feature-card h3 { margin-bottom: 6px; font-size: 1.05rem; }
+.feature-card p { margin: 0; color: var(--muted); font-size: .92rem; }
+
+.section { padding: var(--space-6) 0; }
+.section__head { max-width: 62ch; margin-bottom: var(--space-5); }
+.section__head p { color: var(--muted); }
+
+/* Authentification ---------------------------------------------------- */
+.auth-wrap { display: grid; place-items: center; padding: var(--space-5) 0; }
+.auth-card { width: min(100%, 460px); }
+.auth-card h1 { font-size: clamp(1.8rem, 5vw, 2.4rem); }
+.auth-switch { text-align: center; margin-top: var(--space-4); color: var(--muted); font-size: .92rem; }
+
+/* Tableau de bord ----------------------------------------------------- */
+.page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--space-4); flex-wrap: wrap; margin-bottom: var(--space-5); }
+.page-head h1 { margin: 0; font-size: clamp(1.8rem, 4vw, 2.6rem); }
+.page-head p { margin: 4px 0 0; color: var(--muted); }
+
+.stat-card { padding: var(--space-4); border-radius: var(--radius-sm); border: 1px solid var(--line); background: var(--panel); }
+.stat-card__label { font-size: .86rem; font-weight: 700; color: var(--muted); }
+.stat-card__value { margin-top: 4px; font-family: var(--font-display); font-size: 2rem; font-weight: 800; line-height: 1.1; color: var(--ink); }
+.stat-card__value .unit { font-family: var(--font-body); font-size: .9rem; font-weight: 600; color: var(--muted); }
+.stat-card--gold { background: var(--gold); border-color: transparent; }
+.stat-card--gold .stat-card__label, .stat-card--gold .stat-card__value .unit { color: rgba(12, 26, 75, .72); }
+.stat-card--teal { background: var(--blue); border-color: transparent; }
+.stat-card--teal .stat-card__label, .stat-card--teal .stat-card__value .unit { color: rgba(255, 255, 255, .78); }
+.stat-card--teal .stat-card__value { color: #fff; }
+
+.balance-hero {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); flex-wrap: wrap;
+  padding: var(--space-5); border-radius: var(--radius-lg);
+  background: var(--blue); color: #fff; box-shadow: var(--shadow);
+}
+.balance-hero__value { font-family: var(--font-display); font-size: clamp(2.4rem, 6vw, 3.4rem); font-weight: 800; letter-spacing: -.02em; color: var(--gold); line-height: 1; }
+.balance-hero__label { font-size: .92rem; font-weight: 600; color: rgba(255, 255, 255, .8); }
+.balance-hero .btn--ghost { --btn-fg: #fff; border-color: rgba(255, 255, 255, .4); }
+.balance-hero .btn--ghost:hover { background: rgba(255, 255, 255, .14); }
+
+/* Salles -------------------------------------------------------------- */
+.choice-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-4); }
+@media (max-width: 760px) { .choice-grid { grid-template-columns: 1fr; } }
+.room-shell { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(280px, .85fr); gap: var(--space-4); align-items: start; }
+@media (max-width: 920px) { .room-shell { grid-template-columns: 1fr; } }
+.invite-box {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 10px;
+  border-radius: var(--radius-sm); background: #fff; border: 1.5px dashed var(--line-strong);
+}
+.invite-box code { flex: 1; min-width: 180px; font-family: var(--font-mono); font-size: .8rem; color: var(--muted); overflow-wrap: anywhere; }
+
+/* Jeu : le tour est une carte d'embarquement --------------------------- */
+.play-wrap { width: min(100%, 900px); margin: 0 auto; }
+.play-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); flex-wrap: wrap; margin-bottom: var(--space-4); }
+.round-card {
+  position: relative; overflow: hidden; padding: var(--space-5);
+  border-radius: 22px; background: var(--blue); color: #fff; box-shadow: var(--shadow);
+}
+.round-card__top { display: flex; justify-content: space-between; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+.round-card__phase { font-size: .9rem; font-weight: 700; color: var(--gold); }
+.round-card__body {
+  position: relative; text-align: center;
+  margin: var(--space-4) calc(var(--space-5) * -1) 0;
+  padding: var(--space-6) var(--space-5) var(--space-3);
+  border-top: 2px dashed rgba(255, 255, 255, .35);
+}
+.round-card__body::before, .round-card__body::after {
+  content: ""; position: absolute; top: -13px; width: 24px; height: 24px; border-radius: 50%; background: var(--bg);
+}
+.round-card__body::before { left: -12px; }
+.round-card__body::after { right: -12px; }
+.round-card__label { margin-bottom: 10px; font-size: .95rem; color: rgba(255, 255, 255, .78); }
+.country-name {
+  margin: 0 0 10px; font-family: var(--font-display); font-weight: 800;
+  font-size: clamp(2.4rem, 9vw, 4.6rem); line-height: 1; letter-spacing: -.025em; color: var(--ink);
+}
+.round-card .country-name { color: #fff; }
+.round-card__hint { font-size: .92rem; color: rgba(255, 255, 255, .75); }
+.round-card .muted, .round-card .timer-meta { color: rgba(255, 255, 255, .75); }
+.round-card .timer { color: #fff; }
+.round-card .timer--warn { color: var(--gold); }
+.round-card .timer--danger { color: #FF9A8B; }
+.timer-row { display: flex; align-items: center; justify-content: center; gap: var(--space-4); flex-wrap: wrap; margin-top: var(--space-4); }
+.timer-meta { font-size: .85rem; color: var(--muted); }
+
+.answer-form { display: flex; gap: 8px; flex-wrap: wrap; margin-top: var(--space-5); }
+.answer-form .input { flex: 1; min-width: 200px; font-size: 1.15rem; }
+.answer-form .btn { min-width: 130px; }
+
+.answer-list { display: flex; flex-direction: column; gap: 8px; margin-top: var(--space-4); }
+.answer-row {
+  display: flex; align-items: center; gap: 10px; padding: 12px 14px;
+  border-radius: var(--radius-sm); border: 1px solid var(--line); background: #fff; color: var(--ink); text-align: left;
+}
+.answer-row--correct { background: #E5F5EC; border-color: rgba(11, 127, 87, .45); }
+.answer-row--typo { background: #FFF3C7; border-color: rgba(122, 82, 0, .35); }
+.answer-row--wrong { background: #FDEDEA; border-color: rgba(209, 58, 40, .35); }
+.answer-row__text { font-weight: 700; }
+.answer-row__meta { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.points { font-family: var(--font-mono); font-weight: 800; color: var(--blue); }
+
+/* Révélation : la bonne capitale en jaune plein */
+.reveal-answer { padding: var(--space-4); border-radius: var(--radius); background: var(--gold); color: var(--ink); text-align: center; }
+.reveal-answer__label { font-size: .88rem; font-weight: 700; color: rgba(12, 26, 75, .75); }
+.reveal-answer__value { font-family: var(--font-display); font-weight: 800; font-size: clamp(1.9rem, 6vw, 2.9rem); line-height: 1.08; letter-spacing: -.02em; }
+.reveal-answer__note { margin-top: 6px; font-size: .92rem; color: rgba(12, 26, 75, .8); }
+
+/* Classement ---------------------------------------------------------- */
+.scoreboard { display: flex; flex-direction: column; gap: 6px; }
+.score-row { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: var(--radius-sm); background: var(--panel-2); border: 1px solid var(--line); }
+.score-row--me { background: #E8EBFD; border-color: rgba(36, 56, 224, .35); }
+.score-row__rank { width: 26px; text-align: center; font-family: var(--font-mono); font-weight: 800; color: var(--muted); }
+.score-row__name { font-weight: 700; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.score-row__score { margin-left: auto; font-family: var(--font-mono); font-weight: 800; color: var(--blue); }
+
+/* Podium -------------------------------------------------------------- */
+.podium { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-3); align-items: end; margin: var(--space-5) 0; }
+.podium__place { padding: var(--space-4) var(--space-3); border-radius: var(--radius) var(--radius) 6px 6px; text-align: center; color: var(--ink); }
+.podium__place--1 { order: 2; min-height: 230px; background: var(--gold); }
+.podium__place--2 { order: 1; min-height: 185px; background: #D5DCF0; }
+.podium__place--3 { order: 3; min-height: 155px; background: #F0CDAA; }
+.podium__medal { font-size: 2.3rem; line-height: 1; }
+.podium__name { margin-top: 8px; font-family: var(--font-display); font-weight: 800; font-size: 1.1rem; overflow-wrap: anywhere; }
+.podium__score { font-family: var(--font-mono); font-size: 1.25rem; font-weight: 800; }
+.podium__reward { margin-top: 4px; font-size: .85rem; font-weight: 600; color: rgba(12, 26, 75, .75); }
+@media (max-width: 520px) {
+  .podium { grid-template-columns: 1fr; }
+  .podium__place--1, .podium__place--2, .podium__place--3 { order: 0; min-height: 0; border-radius: var(--radius); }
+}
+
+/* Missions et historique ---------------------------------------------- */
+.mission-card { display: flex; flex-direction: column; gap: 8px; padding: var(--space-4); border-radius: var(--radius-sm); border: 1px solid var(--line); background: var(--panel); }
+.mission-card--done { background: #E5F5EC; border-color: rgba(11, 127, 87, .45); }
+.mission-card__head { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.mission-card__title { font-weight: 800; color: var(--ink); }
+.mission-card__desc { font-size: .9rem; color: var(--muted); }
+.mission-card__foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: .85rem; color: var(--muted); }
+.reward-chip { padding: 2px 10px; border-radius: 999px; background: #FFE08A; color: #6B4700; font-weight: 800; }
+
+.empty { padding: var(--space-6) var(--space-4); text-align: center; color: var(--muted); border: 2px dashed var(--line-strong); border-radius: var(--radius); }
+.empty__icon { margin-bottom: 8px; font-size: 2rem; }
+
+/* Configuration manquante --------------------------------------------- */
+.config-warning { max-width: 720px; margin: var(--space-6) auto; padding: var(--space-5); border-radius: var(--radius); border: 1px solid rgba(209, 58, 40, .4); border-left: 4px solid var(--red); background: #FDEDEA; color: #7A1F14; }
+.config-warning code { padding: 2px 6px; border-radius: 6px; background: rgba(12, 26, 75, .08); font-family: var(--font-mono); font-size: .85rem; }
+
+/* Décompte de salle, départage, actions ------------------------------- */
+.countdown-chip { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-weight: 700; color: var(--muted); }
+.countdown-chip--warn { color: var(--gold-ink); }
+.tiebreak-banner {
+  display: flex; align-items: center; gap: 10px; padding: 10px 14px; margin-bottom: var(--space-4);
+  border-radius: var(--radius-sm); border-left: 4px solid var(--violet);
+  background: #ECE8FB; color: #3F2A9E; font-size: .92rem; font-weight: 600;
+}
+.game-actions { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-top: var(--space-4); }
+
+/* Liste cherchable des pays ------------------------------------------- */
+.country-list {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px;
+  max-height: 280px; overflow: auto; padding: 8px; scrollbar-width: thin;
+  border: 1.5px solid var(--line-strong); border-radius: var(--radius-sm); background: #fff;
+}
+.country-option {
+  padding: 9px 11px; border-radius: 8px; border: 1px solid transparent;
+  background: var(--panel-2); color: var(--text-soft); font-size: .88rem; font-weight: 600; text-align: left; cursor: pointer;
+  transition: background .1s ease, border-color .1s ease;
+}
+.country-option:hover { background: var(--panel-3); }
+.country-option.is-selected { background: var(--blue); border-color: var(--blue); color: #fff; }
+
+@media (max-width: 760px) {
+  .hide-sm { display: none; }
+  .hero { grid-template-columns: 1fr; padding-top: var(--space-4); }
+  .globe-card { max-width: 300px; }
+}

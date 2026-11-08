@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#081922">
+  <meta name="description" content="Capital Challenge — le quiz multijoueur des capitales du monde. Créez une salle, défiez vos amis et grimpez sur le podium.">
+  <title>Capital Challenge — Quiz des capitales</title>
+
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/screens.css">
+
+  <!-- Version exacte épinglée : ne jamais utiliser @latest. -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#app">Aller au contenu</a>
+
+  <header class="site-header">
+    <div class="site-header__inner">
+      <a class="brand" href="#/" aria-label="Capital Challenge, accueil">
+        <span class="brand__mark" aria-hidden="true">CC</span>
+        <span class="brand__name">Capital&nbsp;<span>Challenge</span></span>
+      </a>
+
+      <nav class="main-nav" id="main-nav" aria-label="Navigation principale"></nav>
+
+      <div class="header-user" id="header-user"></div>
+    </div>
+  </header>
+
+  <main id="app" tabindex="-1">
+    <div class="loading-block"><div class="spinner" role="status" aria-label="Chargement"></div>Chargement…</div>
+  </main>
+
+  <footer class="site-footer">
+    <p>Capital Challenge — crédits virtuels, non retirables et non convertibles en argent réel.</p>
+    <p class="tiny">195 pays · 193 membres de l'ONU + Vatican + Palestine</p>
+  </footer>
+
+  <nav class="mobile-nav" id="mobile-nav" aria-label="Navigation mobile"></nav>
+
+  <div class="toast-host" id="toast-host" aria-live="polite" aria-atomic="true"></div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
