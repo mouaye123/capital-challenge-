@@ -5,8 +5,22 @@
 -- À exécuter après 01_schema.sql.
 -- =====================================================================
 
-with data (iso2, name_fr, name_en, capital_fr, capital_en, note_fr) as (
-values
+-- Les 195 pays sont d'abord chargés dans une table temporaire, puis
+-- insérés dans `countries`. On ne fournit JAMAIS `id` à la main : selon
+-- la version d'origine, la colonne est une identité GÉNÉRÉE ALWAYS, un
+-- serial, ou un simple smallint. Le bloc final s'adapte au type réel.
+drop table if exists _pays_seed;
+
+create temp table _pays_seed (
+  iso2       text,
+  name_fr    text,
+  name_en    text,
+  capital_fr text,
+  capital_en text,
+  note_fr    text
+);
+
+insert into _pays_seed (iso2, name_fr, name_en, capital_fr, capital_en, note_fr) values
   ('AF', 'Afghanistan', 'Afghanistan', 'Kaboul', 'Kabul', null),
   ('ZA', 'Afrique du Sud', 'South Africa', 'Pretoria', 'Pretoria', 'Capitale administrative ; Le Cap est la capitale législative et Bloemfontein la capitale judiciaire.'),
   ('AL', 'Albanie', 'Albania', 'Tirana', 'Tirana', null),
@@ -201,28 +215,52 @@ values
   ('VN', 'Viêt Nam', 'Vietnam', 'Hanoï', 'Hanoi', null),
   ('YE', 'Yémen', 'Yemen', 'Sanaa', 'Sanaa', null),
   ('ZM', 'Zambie', 'Zambia', 'Lusaka', 'Lusaka', null),
-  ('ZW', 'Zimbabwe', 'Zimbabwe', 'Harare', 'Harare', null)
-),
-updated as (
-  update countries c
-     set name_fr    = d.name_fr,
-         name_en    = d.name_en,
-         capital_fr = d.capital_fr,
-         capital_en = d.capital_en,
-         note_fr    = d.note_fr
-    from data d
-   where upper(trim(c.iso2)) = d.iso2
-  returning c.id
-)
-insert into countries (id, iso2, name_fr, name_en, capital_fr, capital_en, note_fr)
-select b.base + row_number() over (order by d.iso2),
-       d.iso2, d.name_fr, d.name_en, d.capital_fr, d.capital_en, d.note_fr
-from data d
-cross join (select coalesce(max(id), 0) as base from countries) b
-where not exists (
-  select 1 from countries c where upper(trim(c.iso2)) = d.iso2
-)
-on conflict do nothing;
+  ('ZW', 'Zimbabwe', 'Zimbabwe', 'Harare', 'Harare', null);
+
+-- 1. Mise à jour des pays déjà présents (clé naturelle : le code ISO).
+update countries c
+   set name_fr    = d.name_fr,
+       name_en    = d.name_en,
+       capital_fr = d.capital_fr,
+       capital_en = d.capital_en,
+       note_fr    = d.note_fr
+  from _pays_seed d
+ where upper(trim(c.iso2)) = d.iso2;
+
+-- 2. Insertion des pays absents. On n'écrit `id` que si la colonne n'a
+--    aucun mécanisme automatique (ni identité, ni serial, ni défaut).
+do $$
+declare
+  v_auto boolean;
+begin
+  select (c.column_default is not null or c.is_identity = 'YES')
+    into v_auto
+  from information_schema.columns c
+  where c.table_schema = 'public'
+    and c.table_name = 'countries'
+    and c.column_name = 'id';
+
+  if coalesce(v_auto, false) then
+    insert into public.countries (iso2, name_fr, name_en, capital_fr, capital_en, note_fr)
+    select d.iso2, d.name_fr, d.name_en, d.capital_fr, d.capital_en, d.note_fr
+    from _pays_seed d
+    where not exists (
+      select 1 from public.countries c where upper(trim(c.iso2)) = d.iso2
+    );
+  else
+    insert into public.countries (id, iso2, name_fr, name_en, capital_fr, capital_en, note_fr)
+    select b.base + row_number() over (order by d.iso2),
+           d.iso2, d.name_fr, d.name_en, d.capital_fr, d.capital_en, d.note_fr
+    from _pays_seed d
+    cross join (select coalesce(max(id), 0) as base from public.countries) b
+    where not exists (
+      select 1 from public.countries c where upper(trim(c.iso2)) = d.iso2
+    );
+  end if;
+end;
+$$;
+
+drop table if exists _pays_seed;
 
 notify pgrst, 'reload schema';
 
