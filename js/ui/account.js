@@ -78,6 +78,7 @@ export async function renderDashboard(root) {
       <div class="row">
         <a class="btn btn--gold" href="#/jouer">Créer une salle</a>
         <a class="btn btn--ghost" href="#/jouer">Rejoindre</a>
+        <a class="btn btn--ghost" href="#/missions">Mes missions</a>
       </div>
     </div>
 

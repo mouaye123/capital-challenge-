@@ -46,9 +46,19 @@ export async function renderMissions(root) {
     <div class="page-head">
       <div>
         <h1>Missions du jour</h1>
-        <p>Trois missions, renouvelées chaque jour à minuit UTC (heure d’Abidjan).</p>
+        <p>Trois objectifs, renouvelés chaque jour à minuit UTC (heure d’Abidjan).</p>
       </div>
-      <div class="badge badge--gold">${formatCredits(totalEarned)} / ${formatCredits(totalPossible)} crédits gagnés</div>
+      <div class="row">
+        <div class="badge badge--gold">${formatCredits(totalEarned)} / ${formatCredits(totalPossible)} crédits gagnés</div>
+        <a class="btn btn--gold" href="#/jouer">Jouer maintenant</a>
+      </div>
+    </div>
+
+    <div class="alert alert--info" style="margin-bottom:20px">
+      <strong>Comment valider une mission ?</strong>
+      Il n’y a pas de bouton « démarrer » : les missions se valident <strong>automatiquement</strong>
+      à la fin d’une partie terminée normalement. Le bouton <strong>Commencer</strong> ci-dessous
+      t’emmène simplement dans une salle — tes progrès se mettent à jour en jouant.
     </div>
 
     ${missionsError ? `
@@ -91,6 +101,11 @@ export async function renderMissions(root) {
                 <span>${mission.progress} / ${mission.target}</span>
                 <span class="reward-chip">${mission.completed ? '✔ Récompense versée · ' : ''}+${mission.reward} crédits</span>
               </div>
+              ${mission.completed
+                ? `<span class="badge badge--green" style="align-self:flex-start">Mission terminée ✔</span>`
+                : `<a class="btn btn--gold btn--sm btn--block" href="#/jouer">
+                     ${mission.progress > 0 ? 'Continuer à jouer' : 'Commencer'}
+                   </a>`}
             </article>`;
         }).join('')}
       </div>`}
@@ -99,6 +114,7 @@ export async function renderMissions(root) {
       <div class="card__title"><h2>Comment ça marche ?</h2></div>
       <ul class="small muted" style="padding-left:18px;margin:0">
         <li>Une mission facile, une moyenne et une difficile/très difficile sont tirées chaque jour.</li>
+        <li><strong>Pas de bouton « démarrer »</strong> : la mission se valide d’elle-même à la fin d’une partie terminée normalement.</li>
         <li>La progression est calculée à la fin des parties terminées normalement.</li>
         <li>Une partie terminée par forfait ne fait progresser aucune mission (anti-abus).</li>
         <li>Chaque récompense n’est versée qu’une seule fois.</li>
