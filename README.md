@@ -28,17 +28,17 @@ Ouvrir **Supabase → SQL Editor**, puis coller et exécuter chaque fichier, l'u
 | 5 | `supabase/sql/05_missions.sql` | Missions quotidiennes : catalogue + moteur |
 | 6 | `supabase/sql/06_achats.sql` | Packs et achats (boutique fermée par défaut) |
 | 7 | `supabase/sql/07_correctif.sql` | Correctif final : missions, chrono 15 s, achats fermés, diagnostic |
+| 8 | `supabase/sql/08_missions_fix.sql` | **Réparation des missions** : structure, catalogue, moteur, test réel |
 
 Chaque fichier est **autonome et ré-exécutable** : on peut le relancer sans risque, aucune
-donnée n'est supprimée. `07_correctif.sql` affiche un diagnostic à la fin ; les valeurs
-attendues sont :
+donnée n'est supprimée. `08_missions_fix.sql` reconstruit les tables de missions si elles
+viennent d'une ancienne version (elles sont d'abord sauvegardées en `*_backup_...`), puis
+teste la génération sur les vrais comptes et affiche le résultat :
 
 ```
-modeles_missions = 12 | faciles = 4 | moyennes = 4 | difficiles = 4
-profils_manquants = 0
-answer_seconds = 15
-payments_test_mode = 0
-pays = 195
+structure = compatible | faciles = 4 | moyennes = 4 | difficiles = 4
+comptes_ok = (nombre de comptes) | comptes_ko = 0 | premiere_erreur = aucune
+missions_du_jour = (nombre de comptes × 3)
 ```
 
 ### 2. Configurer le frontend
