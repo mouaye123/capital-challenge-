@@ -519,32 +519,61 @@ $$;
 -- ---------------------------------------------------------------------
 -- 7. Réglages du jeu (source de vérité côté serveur)
 -- ---------------------------------------------------------------------
+-- Initialisation des réglages : le type de `game_config.value` peut être
+-- jsonb, numeric, integer ou text selon la version d'origine. On construit
+-- donc le cast en fonction du type réel de la colonne.
 do $$
+declare
+  v_type text;
+  v_cast text;
+  r      record;
 begin
-  insert into game_config (key, value)
-  select v.key, v.val::jsonb
-  from (values
-    ('entry_fee',            '350'),
-    ('reward_1',             '400'),
-    ('reward_2',             '200'),
-    ('reward_3',             '150'),
-    ('welcome_bonus',        '2000'),
-    ('daily_bonus',          '50'),
-    ('min_players',          '2'),
-    ('max_players',          '9'),
-    ('pick_seconds',         '30'),
-    ('answer_seconds',       '15'),
-    ('reveal_seconds',       '8'),
-    ('lobby_minutes',        '30'),
-    ('reconnect_seconds',    '30'),
-    ('forfeit_missed_turns', '2'),
-    ('tiebreak_min_block',   '5'),
-    ('tiebreak_max_blocks',  '4'),
-    ('payments_test_mode',   '0')
-  ) as v(key, val)
-  where not exists (select 1 from game_config g where g.key = v.key);
-exception when others then
-  raise notice 'Réglages non initialisés (colonne value non jsonb ?) : %', sqlerrm;
+  select data_type into v_type
+  from information_schema.columns
+  where table_schema = 'public' and table_name = 'game_config' and column_name = 'value';
+
+  if v_type is null then
+    raise notice 'Colonne game_config.value introuvable : réglages non initialisés.';
+    return;
+  end if;
+
+  v_cast := case
+    when v_type in ('jsonb','json') then '($2)::jsonb'
+    when v_type in ('integer','bigint','smallint','numeric','real','double precision') then '($2)::numeric'
+    else '($2)::text'
+  end;
+
+  for r in
+    select * from (values
+      ('entry_fee',            350),
+      ('reward_1',             400),
+      ('reward_2',             200),
+      ('reward_3',             150),
+      ('welcome_bonus',       2000),
+      ('daily_bonus',           50),
+      ('min_players',            2),
+      ('max_players',            9),
+      ('pick_seconds',          30),
+      ('answer_seconds',        15),
+      ('reveal_seconds',         8),
+      ('lobby_minutes',         30),
+      ('reconnect_seconds',     30),
+      ('forfeit_missed_turns',   2),
+      ('tiebreak_min_block',     5),
+      ('tiebreak_max_blocks',    4),
+      ('payments_test_mode',     0)
+    ) as v(key, val)
+  loop
+    begin
+      execute format(
+        'insert into public.game_config (key, value) ' ||
+        'select $1, %s where not exists (' ||
+        'select 1 from public.game_config g where g.key = $1)', v_cast
+      ) using r.key, r.val;
+    exception when others then
+      raise notice 'Réglage % non initialisé : %', r.key, sqlerrm;
+    end;
+  end loop;
 end;
 $$;
 
@@ -568,6 +597,9 @@ as $$
   select coalesce(jsonb_object_agg(key, value), '{}'::jsonb) from game_config;
 $$;
 
+-- Lecture d'un réglage entier, quel que soit le type de la colonne value
+-- (jsonb, numeric, integer ou text) : on passe par un cast en texte, puis
+-- en nombre. Évite l'erreur « operator does not exist: numeric #>> unknown ».
 create or replace function cc_config_int(p_key text, p_default int)
 returns int
 language sql
@@ -576,7 +608,9 @@ security definer
 set search_path = public
 as $$
   select coalesce(
-    (select (value #>> '{}')::numeric::int from game_config where key = p_key),
+    (select (trim(both '"' from value::text))::numeric::int
+     from game_config
+     where key = p_key),
     p_default
   );
 $$;
