@@ -25,6 +25,12 @@ export async function renderPlay(root) {
   const entryFee = Number(config.entry_fee) || 0;
   const canAfford = balance >= entryFee;
 
+  let fromMissions = false;
+  try {
+    fromMissions = sessionStorage.getItem('cc_play_hint') === 'missions';
+    if (fromMissions) sessionStorage.removeItem('cc_play_hint');
+  } catch { /* ignore */ }
+
   root.innerHTML = `
     <div class="page-head">
       <div>
@@ -33,6 +39,14 @@ export async function renderPlay(root) {
       </div>
       <div class="badge badge--gold">Solde : ${formatCredits(balance)} crédits</div>
     </div>
+
+    ${fromMissions ? `
+      <div class="alert alert--info" style="margin-bottom:20px">
+        <strong>Tu viens des missions.</strong>
+        C’est normal : pour valider tes missions, il faut jouer une partie.
+        Crée une salle (puis invite un ami) ou rejoins une salle avec son code.
+        Tes missions se mettront à jour <strong>à la fin de la partie</strong>.
+      </div>` : ''}
 
     ${activeRoom ? `
       <div class="alert alert--gold" style="margin-bottom:20px">

@@ -50,15 +50,16 @@ export async function renderMissions(root) {
       </div>
       <div class="row">
         <div class="badge badge--gold">${formatCredits(totalEarned)} / ${formatCredits(totalPossible)} crédits gagnés</div>
-        <a class="btn btn--gold" href="#/jouer">Jouer maintenant</a>
+        <a class="btn btn--gold js-go-play" href="#/jouer">Jouer une partie</a>
       </div>
     </div>
 
     <div class="alert alert--info" style="margin-bottom:20px">
       <strong>Comment valider une mission ?</strong>
       Il n’y a pas de bouton « démarrer » : les missions se valident <strong>automatiquement</strong>
-      à la fin d’une partie terminée normalement. Le bouton <strong>Commencer</strong> ci-dessous
-      t’emmène simplement dans une salle — tes progrès se mettent à jour en jouant.
+      à la fin d’une partie terminée normalement. Le bouton <strong>Jouer une partie</strong>
+      t’ouvre l’écran de jeu : tu y <strong>crées une salle</strong> ou tu <strong>rejoins</strong>
+      celle d’un ami. Tes progrès se mettent à jour en jouant.
     </div>
 
     ${missionsError ? `
@@ -103,8 +104,8 @@ export async function renderMissions(root) {
               </div>
               ${mission.completed
                 ? `<span class="badge badge--green" style="align-self:flex-start">Mission terminée ✔</span>`
-                : `<a class="btn btn--gold btn--sm btn--block" href="#/jouer">
-                     ${mission.progress > 0 ? 'Continuer à jouer' : 'Commencer'}
+                : `<a class="btn btn--ghost btn--sm btn--block js-go-play" href="#/jouer">
+                     ${mission.progress > 0 ? 'Continuer à jouer' : 'Jouer une partie'}
                    </a>`}
             </article>`;
         }).join('')}
@@ -124,6 +125,13 @@ export async function renderMissions(root) {
     </section>`;
 
   root.querySelector('#retry-missions')?.addEventListener('click', () => renderMissions(root));
+
+  // Signale à l'écran « Jouer » que l'on vient des missions (explication).
+  root.querySelectorAll('.js-go-play').forEach((link) => {
+    link.addEventListener('click', () => {
+      try { sessionStorage.setItem('cc_play_hint', 'missions'); } catch { /* ignore */ }
+    });
+  });
 }
 
 /* =====================================================================
