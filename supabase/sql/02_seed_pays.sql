@@ -211,7 +211,7 @@ updated as (
          capital_en = d.capital_en,
          note_fr    = d.note_fr
     from data d
-   where c.iso2 = d.iso2
+   where upper(trim(c.iso2)) = d.iso2
   returning c.id
 )
 insert into countries (id, iso2, name_fr, name_en, capital_fr, capital_en, note_fr)
@@ -220,7 +220,7 @@ select b.base + row_number() over (order by d.iso2),
 from data d
 cross join (select coalesce(max(id), 0) as base from countries) b
 where not exists (
-  select 1 from countries c where c.iso2 = d.iso2
+  select 1 from countries c where upper(trim(c.iso2)) = d.iso2
 )
 on conflict do nothing;
 

@@ -6,57 +6,110 @@
 -- vaut 0 (voir 01_schema.sql) et 07_correctif.sql révoque l'exécution de
 -- `create_purchase`. Aucun crédit ne peut donc être ajouté depuis le
 -- navigateur. Pour rouvrir : voir la note en fin de 07_correctif.sql.
+--
+-- Ré-exécutable et tolérant à un schéma plus ancien.
 -- =====================================================================
+
+-- Une ancienne définition au type de retour différent empêcherait
+-- `create or replace` : on supprime d'abord (aucune donnée touchée).
+do $$
+declare
+  f record;
+begin
+  for f in
+    select p.oid::regprocedure as sig
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public' and p.proname = 'create_purchase'
+  loop
+    begin
+      execute format('drop function %s cascade', f.sig);
+    exception when others then
+      raise notice 'Fonction % non supprimée : %', f.sig, sqlerrm;
+    end;
+  end loop;
+end;
+$$;
 
 create table if not exists credit_packs (
   id         smallint primary key,
-  label      text not null,
-  credits    int not null check (credits > 0),
-  price_fcfa int not null check (price_fcfa >= 0),
-  active     boolean not null default true
+  label      text,
+  credits    int,
+  price_fcfa int,
+  active     boolean default true
 );
 
-insert into credit_packs (id, label, credits, price_fcfa) values
-  (1, 'Pack découverte',  500,   500),
-  (2, 'Pack joueur',     1200,  1000),
-  (3, 'Pack compétiteur',3000,  2000),
-  (4, 'Pack champion',   7000,  4000)
-on conflict (id) do update set
-  label      = excluded.label,
-  credits    = excluded.credits,
-  price_fcfa = excluded.price_fcfa;
+alter table credit_packs add column if not exists label text;
+alter table credit_packs add column if not exists credits int;
+alter table credit_packs add column if not exists price_fcfa int;
+alter table credit_packs add column if not exists active boolean default true;
 
 create table if not exists purchases (
-  id          uuid primary key default gen_random_uuid(),
-  user_id     uuid not null references profiles(id) on delete cascade,
-  pack_id     smallint references credit_packs(id),
-  credits     int not null,
-  amount_fcfa int not null,
-  status      text not null default 'pending'
-                check (status in ('pending','paid','failed','cancelled')),
-  provider    text,
+  id           uuid primary key default gen_random_uuid(),
+  user_id      uuid not null references profiles(id) on delete cascade,
+  pack_id      smallint,
+  credits      int,
+  amount_fcfa  int,
+  status       text default 'pending',
+  provider     text,
   provider_ref text,
-  created_at  timestamptz not null default now(),
-  paid_at     timestamptz
+  created_at   timestamptz default now(),
+  paid_at      timestamptz
 );
 
-create index if not exists purchases_user_idx
-  on purchases (user_id, created_at desc);
+alter table purchases add column if not exists pack_id smallint;
+alter table purchases add column if not exists credits int;
+alter table purchases add column if not exists amount_fcfa int;
+alter table purchases add column if not exists status text;
+alter table purchases add column if not exists provider text;
+alter table purchases add column if not exists provider_ref text;
+alter table purchases add column if not exists created_at timestamptz default now();
+alter table purchases add column if not exists paid_at timestamptz;
 
-alter table credit_packs enable row level security;
-alter table purchases    enable row level security;
+do $$
+begin
+  insert into credit_packs (id, label, credits, price_fcfa)
+  select v.id, v.label, v.credits, v.price_fcfa
+  from (values
+    (1::smallint, 'Pack découverte',   500,   500),
+    (2::smallint, 'Pack joueur',      1200,  1000),
+    (3::smallint, 'Pack compétiteur', 3000,  2000),
+    (4::smallint, 'Pack champion',    7000,  4000)
+  ) as v(id, label, credits, price_fcfa)
+  where not exists (select 1 from credit_packs p where p.id = v.id);
+exception when others then
+  raise notice 'Packs non initialisés : %', sqlerrm;
+end;
+$$;
 
-drop policy if exists credit_packs_select on credit_packs;
-create policy credit_packs_select on credit_packs
-  for select to authenticated using (active);
+do $$
+begin
+  begin
+    create index if not exists purchases_user_idx
+      on purchases (user_id, created_at desc);
+  exception when others then
+    raise notice 'Index achats non créé : %', sqlerrm;
+  end;
 
-drop policy if exists purchases_select on purchases;
-create policy purchases_select on purchases
-  for select to authenticated using (user_id = auth.uid());
+  begin
+    alter table credit_packs enable row level security;
+    alter table purchases    enable row level security;
 
-revoke all on table credit_packs, purchases from anon;
-grant select on table credit_packs to authenticated;
-grant select on table purchases to authenticated;
+    drop policy if exists credit_packs_select on credit_packs;
+    create policy credit_packs_select on credit_packs
+      for select to authenticated using (true);
+
+    drop policy if exists purchases_select on purchases;
+    create policy purchases_select on purchases
+      for select to authenticated using (user_id = auth.uid());
+
+    revoke all on table credit_packs, purchases from anon, authenticated;
+    grant select on table credit_packs, purchases to authenticated;
+  exception when others then
+    raise notice 'Sécurité de la boutique non appliquée : %', sqlerrm;
+  end;
+end;
+$$;
 
 -- ---------------------------------------------------------------------
 -- Création d'un achat.
@@ -78,44 +131,36 @@ declare
   v_bal   int;
 begin
   if v_uid is null then raise exception 'Non authentifié'; end if;
+  if cc_config_int('payments_test_mode', 0) <> 1 then
+    raise exception 'Boutique fermée : les achats de crédits sont désactivés';
+  end if;
 
-  select * into v_pack from credit_packs where id = p_pack and active;
+  select * into v_pack from credit_packs where id = p_pack;
   if v_pack.id is null then raise exception 'Pack inconnu'; end if;
 
-  v_test := cc_config_int('payments_test_mode', 0) = 1;
+  v_test := true;
 
   insert into purchases (user_id, pack_id, credits, amount_fcfa,
                          status, provider, paid_at)
   values (v_uid, v_pack.id, v_pack.credits, v_pack.price_fcfa,
-          case when v_test then 'paid' else 'pending' end,
-          case when v_test then 'test' else null end,
-          case when v_test then now() else null end)
+          'paid', 'test', now())
   returning id into v_id;
 
-  if v_test then
-    perform wallet_apply(
-      v_uid, v_pack.credits, 'purchase',
-      'purchase:' || v_id::text,
-      jsonb_build_object('pack_id', v_pack.id, 'amount_fcfa', v_pack.price_fcfa)
-    );
-    select balance into v_bal from wallets where user_id = v_uid;
-
-    return jsonb_build_object(
-      'ok', true, 'status', 'paid', 'purchase_id', v_id,
-      'credits', v_pack.credits, 'balance', v_bal
-    );
-  end if;
+  perform wallet_apply(
+    v_uid, v_pack.credits, 'purchase',
+    'purchase:' || v_id::text,
+    jsonb_build_object('pack_id', v_pack.id, 'amount_fcfa', v_pack.price_fcfa)
+  );
+  select balance into v_bal from wallets where user_id = v_uid;
 
   return jsonb_build_object(
-    'ok', true, 'status', 'pending', 'purchase_id', v_id,
-    'credits', v_pack.credits,
-    'message', 'Achat enregistré : il sera crédité après confirmation du paiement.'
+    'ok', true, 'status', 'paid', 'purchase_id', v_id,
+    'credits', v_pack.credits, 'balance', v_bal
   );
 end;
 $$;
 
 revoke all on function create_purchase(smallint) from public, anon, authenticated;
-grant execute on function create_purchase(smallint) to authenticated;
 
 notify pgrst, 'reload schema';
 

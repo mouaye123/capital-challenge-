@@ -5,6 +5,30 @@
 -- À exécuter après 04_moteur.sql.
 -- =====================================================================
 
+-- Une ancienne définition au type de retour différent empêcherait
+-- `create or replace` : on supprime d'abord (aucune donnée touchée).
+do $$
+declare
+  f record;
+begin
+  for f in
+    select p.oid::regprocedure as sig
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.proname = any (array[
+        'ensure_daily_missions', 'get_daily_missions', 'progress_daily_missions'
+      ])
+  loop
+    begin
+      execute format('drop function %s cascade', f.sig);
+    exception when others then
+      raise notice 'Fonction % non supprimée : %', f.sig, sqlerrm;
+    end;
+  end loop;
+end;
+$$;
+
 create table if not exists mission_templates (
   id          smallint generated always as identity primary key,
   code        text not null unique,
@@ -31,8 +55,16 @@ create table if not exists user_missions (
   unique (user_id, mission_date, template_id)
 );
 
-create index if not exists user_missions_user_date_idx
-  on user_missions (user_id, mission_date);
+do $$
+begin
+  begin
+    create index if not exists user_missions_user_date_idx
+      on user_missions (user_id, mission_date);
+  exception when others then
+    raise notice 'Index missions non créé : %', sqlerrm;
+  end;
+end;
+$$;
 
 alter table mission_templates enable row level security;
 alter table user_missions     enable row level security;

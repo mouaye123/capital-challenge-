@@ -5,6 +5,31 @@
 -- À exécuter après 01 et 02.
 -- =====================================================================
 
+-- Une ancienne définition au type de retour différent empêcherait
+-- `create or replace` : on supprime d'abord (aucune donnée touchée).
+do $$
+declare
+  f record;
+begin
+  for f in
+    select p.oid::regprocedure as sig
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.proname = any (array[
+        'cc_room_code', 'cc_round_total', 'cc_start_round', 'create_room',
+        'join_room', 'set_ready', 'leave_room', 'ping_room', 'start_game'
+      ])
+  loop
+    begin
+      execute format('drop function %s cascade', f.sig);
+    exception when others then
+      raise notice 'Fonction % non supprimée : %', f.sig, sqlerrm;
+    end;
+  end loop;
+end;
+$$;
+
 -- Code de salle lisible : 6 caractères, sans I/O/0/1.
 create or replace function cc_room_code()
 returns text
