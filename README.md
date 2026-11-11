@@ -29,6 +29,7 @@ Ouvrir **Supabase → SQL Editor**, puis coller et exécuter chaque fichier, l'u
 | 6 | `supabase/sql/06_achats.sql` | Packs et achats (boutique fermée par défaut) |
 | 7 | `supabase/sql/07_correctif.sql` | Correctif final : missions, chrono 15 s, achats fermés, diagnostic |
 | 8 | `supabase/sql/08_missions_fix.sql` | **Réparation des missions** : structure, catalogue, moteur, test réel |
+| 9 | `supabase/sql/09_missions_rebuild.sql` | Reconstruction propre des tables de missions (sauvegarde + test réel) |
 
 Chaque fichier est **autonome et ré-exécutable** : on peut le relancer sans risque, aucune
 donnée n'est supprimée. `08_missions_fix.sql` reconstruit les tables de missions si elles
