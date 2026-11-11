@@ -1,54 +1,92 @@
 # Capital Challenge
 
-Quiz multijoueur en temps réel sur les capitales du monde, de A à Z.
+Quiz multijoueur en temps réel sur les capitales du monde.
 
 - **Frontend** : HTML, CSS et JavaScript natifs (modules ES), sans framework ni étape de build.
 - **Backend** : Supabase uniquement — Auth, PostgreSQL, Realtime et fonctions SQL `SECURITY DEFINER`.
 - **Hébergement** : compatible GitHub Pages (routage par hash, aucun serveur à maintenir).
-- **Périmètre v1** : 195 pays (193 membres de l'ONU + Vatican + Palestine), 2 à 9 joueurs par salle, 15 à 55 pays par session, joker orthographique, missions quotidiennes, portefeuille virtuel et achats en mode test.
+- **Périmètre** : 195 pays (193 membres de l'ONU + Vatican + Palestine), 2 à 9 joueurs par
+  salle, 15 à 55 pays par session, joker orthographique, missions quotidiennes et
+  portefeuille virtuel.
 
 > Les crédits sont **virtuels** : non retirables, non convertibles en argent réel, non transférables.
 
 ---
 
-## Démarrage rapide
+## Installation
 
-1. Créer un projet Supabase.
-2. Exécuter les fichiers SQL **dans cet ordre** dans le SQL Editor :
-   1. `supabase/sql/01_schema.sql`
-   2. `supabase/sql/02_seed_pays.sql`
-   3. `supabase/sql/03_salles.sql`
-   4. `supabase/sql/04_moteur.sql`
-   5. `supabase/sql/05_missions.sql`
-   6. `supabase/sql/06_achats.sql`
-   7. `supabase/sql/07_correctif.sql` (missions, chrono 15 s, achats fermés)
-3. Renseigner `js/config.js` avec l'URL du projet et la clé **anon / publishable**.
-4. Servir le dossier en HTTP (les modules ES ne fonctionnent pas en `file://`) :
-   ```powershell
-   python -m http.server 8080
-   ```
-   Puis ouvrir `http://localhost:8080`.
-5. Vérifier les données et la sécurité avec `tests/seed_check.sql`, `tests/grade_tests.sql` et `tests/security_tests.sql`.
+### 1. Supabase — exécuter les fichiers SQL **dans cet ordre**
 
-La procédure complète (Auth, GitHub Pages, Realtime, achats) est dans [`docs/DEPLOIEMENT.md`](docs/DEPLOIEMENT.md).
+Ouvrir **Supabase → SQL Editor**, puis coller et exécuter chaque fichier, l'un après l'autre :
+
+| # | Fichier | Contenu |
+|---|---------|---------|
+| 1 | `supabase/sql/01_schema.sql` | Tables, index, RLS, portefeuille, profils, trophées, réglages |
+| 2 | `supabase/sql/02_seed_pays.sql` | Les 195 pays (FR/EN, capitales, notes) |
+| 3 | `supabase/sql/03_salles.sql` | Salles : créer, rejoindre, prêt, départ, frais d'entrée |
+| 4 | `supabase/sql/04_moteur.sql` | Correction, manches, révélation, classement, gains |
+| 5 | `supabase/sql/05_missions.sql` | Missions quotidiennes : catalogue + moteur |
+| 6 | `supabase/sql/06_achats.sql` | Packs et achats (boutique fermée par défaut) |
+| 7 | `supabase/sql/07_correctif.sql` | Correctif final : missions, chrono 15 s, achats fermés, diagnostic |
+
+Chaque fichier est **autonome et ré-exécutable** : on peut le relancer sans risque, aucune
+donnée n'est supprimée. `07_correctif.sql` affiche un diagnostic à la fin ; les valeurs
+attendues sont :
+
+```
+modeles_missions = 12 | faciles = 4 | moyennes = 4 | difficiles = 4
+profils_manquants = 0
+answer_seconds = 15
+payments_test_mode = 0
+pays = 195
+```
+
+### 2. Configurer le frontend
+
+Renseigner `js/config.js` avec l'URL du projet et la clé **anon / publishable**
+(Supabase → Project Settings → API).
+
+### 3. Servir le site
+
+Les modules ES ne fonctionnent pas en `file://` :
+
+```powershell
+python -m http.server 8080
+```
+
+Puis ouvrir `http://localhost:8080`. Sur GitHub Pages, le déploiement est automatique
+après un `git push` sur `main` (compter une minute).
 
 ---
 
 ## Fonctionnalités
 
-- Inscription / connexion par e-mail et mot de passe, pseudo unique.
+- Inscription / connexion par e-mail et mot de passe, pseudo unique modifiable.
 - `2 000` crédits de bienvenue et bonus quotidien de `50` crédits (journée UTC).
 - Salles privées avec code à 6 caractères ou lien d'invitation.
 - Salle d'attente temps réel : prêt, hôte, expiration, transfert d'hôte.
-- Choix d'un pays non encore joué, capitale secrète, puis réponse en 15 secondes.
+- Choix d'un pays non encore joué, capitale secrète, puis réponse en **15 secondes**
+  (30 secondes pour le choix du pays).
 - Révélation anticipée dès que tous les répondants présents ont validé.
-- Correction automatique : accents et ponctuation ignorés, variantes anglaises, petites fautes avec joker.
+- Correction automatique : accents et ponctuation ignorés, variantes anglaises, petites
+  fautes avec joker.
 - Anti-collision entre capitales proches (Kingston ≠ Kingstown).
-- Podium, départage par blocs d'au moins 5 pays (multiples du nombre de joueurs actifs), départage final par réponses parfaites puis temps de réponse.
+- Podium, départage par blocs d'au moins 5 pays (multiples du nombre de joueurs actifs),
+  départage final par réponses parfaites puis temps de réponse.
 - Récompenses `400 / 200 / 150` crédits, versées une seule fois.
-- Missions quotidiennes, paliers, statistiques et historique.
-- Portefeuille, transactions et **boutique fermée par défaut** (aucun achat possible tant que le paiement n'est pas vérifié).
-- Responsive mobile d'abord, navigation mobile, focus visible, `aria-live`, contrastes soignés.
+- Missions quotidiennes (3 par jour : une facile, une moyenne, une difficile ou très
+  difficile), paliers, trophées, statistiques et historique.
+- Portefeuille, transactions et **boutique fermée par défaut**.
+- Responsive mobile d'abord, navigation mobile, focus visible, `aria-live`.
+
+### Comprendre les gains
+
+- La **mise d'entrée** (`350` crédits) est débitée au lancement de la partie, pour tous les joueurs.
+- La **récompense** (`400 / 200 / 150`) est créditée à la finalisation.
+- Le solde augmente donc du **net** : `récompense − mise` (par exemple `400 − 350 = +50`).
+- L'écran de fin affiche le bilan détaillé (mise, récompense, net) et le solde réel.
+- Si l'affichage semble figé, le bouton « Actualiser mes gains » relance la finalisation
+  (opération idempotente : un gain n'est jamais versé deux fois).
 
 ---
 
@@ -75,43 +113,45 @@ js/
   router.js                Routeur par hash
   app.js                   Bootstrap et routes
   ui/                      Écrans (shell, accueil, auth, compte, jeu…)
-supabase/sql/              Migrations SQL numérotées
-tests/                     Contrôles SQL (données, correction, sécurité)
-docs/                      Décisions, design, déploiement, tests, capitales
+supabase/sql/              Migrations SQL numérotées (01 → 07)
 ```
-
----
-
-## Documentation
-
-- [`docs/DECISIONS.md`](docs/DECISIONS.md) — arbitrages et interprétations du cahier des charges.
-- [`docs/DESIGN.md`](docs/DESIGN.md) — direction artistique et design system.
-- [`docs/CAPITALES_A_VALIDER.md`](docs/CAPITALES_A_VALIDER.md) — cas politiques et capitales multiples à valider.
-- [`docs/DEPLOIEMENT.md`](docs/DEPLOIEMENT.md) — installation Supabase, Auth, GitHub Pages, achats.
-- [`docs/TESTS_MANUELS.md`](docs/TESTS_MANUELS.md) — scénarios de recette et de sécurité.
 
 ---
 
 ## Sécurité en un coup d'œil
 
 - Le navigateur ne fait que **lire** les tables autorisées et **appeler des RPC**.
-- `capitals`, `capital_aliases`, `round_secrets` et `game_config` sont illisibles par le client.
-- Les réponses (`answers`) ne sont lisibles qu'après la révélation.
-- Tous les mouvements de crédits passent par `wallet_apply` avec une clé d'idempotence.
-- Les fonctions internes (`grade_answer`, `finalize_room`, `wallet_apply`…) ne sont pas exécutables par `authenticated`.
-- `credit_purchase` est réservée à `service_role` pour le webhook de paiement.
+- `round_secrets` et `game_config` sont illisibles par le client : la capitale secrète du
+  proposant n'est jamais exposée à l'API.
+- La table `countries` n'expose que `id, iso2, name_fr, name_en` : les capitales
+  (`capital_fr`, `capital_en`) ne sont pas lisibles par un joueur.
+- `rounds.correct_names` et `rounds.reveal_note` ne sont écrits qu'au moment de la
+  révélation : rien à lire pendant la phase de réponses.
+- La table `answers` n'est lisible qu'une fois la manche révélée (`status = 'revealed'`).
+- Tous les mouvements de crédits passent par `wallet_apply` avec une clé d'idempotence
+  (`user_id`, `type`, `ref`), donc aucun double versement.
+- Les fonctions internes (`cc_grade`, `cc_finalize_round`, `cc_finalize_room`,
+  `wallet_apply`…) ne sont pas exécutables par `authenticated`.
 
-⚠️ **Boutique fermée** : par défaut (`PURCHASES_ENABLED = false` dans `js/config.js` et
-`payments_test_mode = 0` côté serveur), aucun achat ne peut être crédité. Pour rouvrir la
-boutique, il faudra un webhook de paiement vérifié, réactiver l'interrupteur frontend et
-redonner l'autorisation d'exécuter `create_purchase` (voir `supabase/sql/07_correctif.sql`).
+⚠️ **Boutique fermée** : `PURCHASES_ENABLED = false` dans `js/config.js`,
+`payments_test_mode = 0` côté serveur et `create_purchase` révoquée pour `public`, `anon`
+et `authenticated`. Aucun crédit ne peut donc être ajouté depuis le navigateur.
+
+Pour rouvrir plus tard :
+
+1. Brancher un webhook de paiement vérifié (Edge Function).
+2. Redonner l'autorisation d'exécution, avec la signature exacte :
+   ```sql
+   grant execute on function create_purchase(smallint) to authenticated;
+   ```
+3. Passer `PURCHASES_ENABLED` à `true` dans `js/config.js`.
 
 ---
 
-## Limites connues de la v1
+## Limites connues
 
-- Pas de tournois, d'amis, de chat ni de classement mondial (hors périmètre).
-- Pas d'interface d'administration : les réglages se font dans `game_config` et les tables de référence.
-- Le webhook de paiement réel n'est pas inclus ; seule la fonction SQL `credit_purchase` est prête.
-- Les Edge Functions ne sont pas utilisées, sauf si vous ajoutez plus tard le webhook de paiement.
+- Pas de tournois, d'amis, de chat ni de classement mondial.
+- Pas d'interface d'administration : les réglages se font dans `game_config` et les tables
+  de référence.
+- Le webhook de paiement réel n'est pas inclus.
 - Aucun envoi d'e-mail personnalisé : Supabase Auth gère la confirmation d'adresse.
