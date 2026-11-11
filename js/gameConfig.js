@@ -14,7 +14,7 @@ export const DEFAULT_CONFIG = Object.freeze({
   min_players: 2,
   max_players: 9,
   pick_seconds: 30,
-  answer_seconds: 35,
+  answer_seconds: 15,
   reveal_seconds: 8,
   lobby_minutes: 30,
   reconnect_seconds: 30,

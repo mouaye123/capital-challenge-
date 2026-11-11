@@ -45,12 +45,14 @@ export async function renderDashboard(root) {
   root.innerHTML = `<div class="loading-block"><div class="spinner" role="status"></div>Chargement de votre espace…</div>`;
 
   let profile, wallet, stats, missions, activeRoom, recent, config;
+  let missionsError = null;
   try {
     [profile, wallet, stats, missions, activeRoom, recent, config] = await Promise.all([
       loadProfile(user.id),
       fetchWallet(user.id),
       fetchStats(user.id),
       getDailyMissions().catch((error) => {
+        missionsError = error;
         console.error('Missions indisponibles :', error?.message || error);
         return [];
       }),
@@ -105,7 +107,7 @@ export async function renderDashboard(root) {
       </div>
       <div class="stat-card stat-card--teal">
         <div class="stat-card__label">Missions du jour</div>
-        <div class="stat-card__value">${doneMissions}<span class="unit"> / ${missions.length}</span></div>
+        <div class="stat-card__value">${missionsError ? '—' : doneMissions}<span class="unit"> / ${missionsError ? '—' : missions.length}</span></div>
         <a class="small" href="#/missions">Voir les missions →</a>
       </div>
     </section>
@@ -148,7 +150,15 @@ export async function renderDashboard(root) {
         <h2>Missions du jour</h2>
         <a class="small" href="#/missions">Détail</a>
       </div>
-      ${missions.length === 0 ? `<p class="muted">Les missions apparaîtront ici.</p>` : `
+      ${missionsError ? `
+        <div class="alert alert--error">
+          <strong>Missions indisponibles.</strong><br>
+          ${escapeHtml(friendlyError(missionsError))}
+          <details class="mt-2 small">
+            <summary>Détail technique</summary>
+            <pre style="white-space:pre-wrap;margin:8px 0 0">${escapeHtml(missionsError?.message || String(missionsError))}</pre>
+          </details>
+        </div>` : missions.length === 0 ? `<p class="muted">Les missions apparaîtront ici.</p>` : `
         <div class="grid grid--3">
           ${missions.map((mission) => `
             <div class="mission-card ${mission.completed ? 'mission-card--done' : ''}">
@@ -199,19 +209,36 @@ export async function renderProfile(root) {
 
   root.innerHTML = `<div class="loading-block"><div class="spinner" role="status"></div>Chargement du profil…</div>`;
 
-  let profile, stats, milestones;
+  let profile, stats;
+  let trophyCatalogue = [];
+  let achieved = [];
+
   try {
     [profile, stats] = await Promise.all([loadProfile(user.id), fetchStats(user.id)]);
-    const { data } = await supabase
-      .from('user_milestones')
-      .select('code, achieved_at, milestones(title)')
-      .eq('user_id', user.id)
-      .order('achieved_at', { ascending: false });
-    milestones = data || [];
   } catch (error) {
     root.innerHTML = `<div class="alert alert--error">${escapeHtml(friendlyError(error))}</div>`;
     return;
   }
+
+  // Les trophées ne doivent jamais empêcher l'affichage du profil.
+  try {
+    const [catalogueRes, achievedRes] = await Promise.all([
+      supabase
+        .from('milestones')
+        .select('code, title, metric, threshold, reward')
+        .order('threshold', { ascending: true }),
+      supabase
+        .from('user_milestones')
+        .select('code, achieved_at')
+        .eq('user_id', user.id)
+    ]);
+    if (!catalogueRes.error) trophyCatalogue = catalogueRes.data || [];
+    if (!achievedRes.error) achieved = achievedRes.data || [];
+  } catch (error) {
+    console.warn('Trophées indisponibles :', error?.message || error);
+  }
+
+  const achievedByCode = new Map(achieved.map((m) => [m.code, m.achieved_at]));
 
   const username = profile?.username || 'Joueur';
   const s = stats || {};
@@ -247,15 +274,31 @@ export async function renderProfile(root) {
       </div>
 
       <div class="card">
-        <div class="card__title"><h2>Paliers atteints</h2></div>
-        ${milestones.length === 0 ? `<p class="muted">Aucun palier pour l’instant. Terminez votre première partie !</p>` : `
-          <div class="stack-sm">
-            ${milestones.map((m) => `
-              <div class="row row--between">
-                <span>${escapeHtml(m.milestones?.title || m.code)}</span>
-                <span class="badge badge--gold">${formatShortDate(m.achieved_at)}</span>
-              </div>`).join('')}
+        <div class="card__title">
+          <h2>Trophées</h2>
+          <span class="badge badge--gold">${achieved.length} / ${trophyCatalogue.length}</span>
+        </div>
+        ${trophyCatalogue.length === 0 ? `
+          <p class="muted">Catalogue de trophées indisponible pour le moment.</p>` : `
+          <div class="trophy-grid">
+            ${trophyCatalogue.map((trophy) => {
+              const achievedAt = achievedByCode.get(trophy.code);
+              return `
+                <div class="trophy ${achievedAt ? 'trophy--unlocked' : ''}">
+                  <div class="trophy__icon" aria-hidden="true">${achievedAt ? '🏆' : '🔒'}</div>
+                  <div class="trophy__title">${escapeHtml(trophy.title)}</div>
+                  <div class="trophy__meta">
+                    ${achievedAt
+                      ? `Débloqué le ${formatShortDate(achievedAt)}`
+                      : `À débloquer · +${formatCredits(trophy.reward)} crédits`}
+                  </div>
+                </div>`;
+            }).join('')}
           </div>`}
+        <p class="small muted mt-4">
+          Les trophées se débloquent à la fin d’une partie terminée normalement
+          (sans forfait ni abandon). Chaque palier est versé une seule fois.
+        </p>
       </div>
     </section>
 

@@ -2,12 +2,39 @@
    Capital Challenge — base
    ===================================================================== */
 *, *::before, *::after { box-sizing: border-box; }
-html { height: 100%; scroll-behavior: smooth; }
+html { height: 100%; scroll-behavior: smooth; background: var(--bg); }
 body {
   margin: 0; min-height: 100%;
   font-family: var(--font-body); font-size: 16px; line-height: 1.55;
-  color: var(--text); background: var(--bg);
+  color: var(--text); background: transparent; overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
+}
+
+/* Ambiance : nappes de couleur très lentes, comme une carte qui s'éclaire. */
+body::before {
+  content: ""; position: fixed; inset: -22vmax; z-index: -1; pointer-events: none;
+  background:
+    radial-gradient(42vmax 42vmax at 16% 8%, rgba(36, 56, 224, .16), transparent 62%),
+    radial-gradient(36vmax 36vmax at 86% 12%, rgba(255, 198, 26, .20), transparent 60%),
+    radial-gradient(48vmax 48vmax at 55% 104%, rgba(91, 63, 208, .15), transparent 62%);
+  animation: aurora 26s var(--ease-out) infinite alternate;
+}
+@keyframes aurora {
+  from { transform: translate3d(-1%, -1%, 0) scale(1); }
+  to { transform: translate3d(1.4%, 1.6%, 0) scale(1.07); }
+}
+
+/* Entrée douce des écrans (désactivée par prefers-reduced-motion plus bas). */
+main#app > .page-head,
+main#app > .card,
+main#app > .grid,
+main#app > .empty,
+main#app > .container-mid {
+  animation: rise .4s var(--ease-out) both;
+}
+@keyframes rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
 }
 h1, h2, h3, h4 {
   margin: 0 0 var(--space-3);
@@ -37,8 +64,9 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .site-header {
   position: sticky; top: 0; z-index: 40; min-height: var(--header-h);
   display: flex; align-items: center;
-  background: var(--blue); color: #fff;
-  box-shadow: 0 1px 0 rgba(0, 0, 0, .14);
+  background: linear-gradient(115deg, #1727A8 0%, var(--blue) 55%, #3448F2 100%);
+  color: #fff;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, .14), 0 10px 30px rgba(23, 39, 168, .18);
 }
 .site-header__inner {
   width: min(100% - 32px, var(--maxw)); margin: 0 auto;

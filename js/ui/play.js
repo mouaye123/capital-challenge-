@@ -12,7 +12,7 @@ import { navigate } from '../router.js';
 import { getGameConfig, DEFAULT_CONFIG } from '../gameConfig.js';
 import {
   escapeHtml, formatCredits, formatDuration, friendlyError, toast,
-  copyText, initials, adjustedTotal, phaseLabel
+  copyText, initials, adjustedTotal, phaseLabel, formatShortDate
 } from '../utils.js';
 
 function playerName(player) {
@@ -96,6 +96,8 @@ class PlayController {
     this.autoSubmittedRound = null;
     this.submitting = false;
     this.destroyed = false;
+    this.finalizeRequested = false;
+    this.celebrated = false;
   }
 
   async start() {
@@ -560,8 +562,13 @@ class PlayController {
                  placeholder="Ex. Côte d’Ivoire, Japon, Brésil…" value="${escapeHtml(this.countryQuery)}">
         </div>
 
+        <div class="row row--between small muted">
+          <span>${filtered.length} pays affiché(s)</span>
+          <span>${this.countries.length} pays au catalogue</span>
+        </div>
+
         <div class="country-list" id="country-list" role="listbox" aria-label="Pays disponibles">
-          ${filtered.length === 0 ? `<p class="small muted" style="padding:8px">Aucun pays ne correspond.</p>` : filtered.map((c) => `
+          ${this.countries.length === 0 ? `<p class="small muted" style="padding:8px">Liste des pays indisponible. Rechargez la page.</p>` : filtered.length === 0 ? `<p class="small muted" style="padding:8px">Aucun pays ne correspond.</p>` : filtered.map((c) => `
             <button type="button" role="option" aria-selected="${c.id === this.selectedCountryId}"
                     class="country-option ${c.id === this.selectedCountryId ? 'is-selected' : ''}"
                     data-country="${c.id}">
@@ -697,10 +704,11 @@ class PlayController {
 
   filteredCountries() {
     const query = normalizeText(this.countryQuery);
-    const list = query
-      ? this.countries.filter((c) => normalizeText(c.name_fr).includes(query) || normalizeText(c.name_en).includes(query))
-      : this.countries;
-    return list.slice(0, 120);
+    // Aucune troncature : les 195 pays du catalogue restent accessibles.
+    if (!query) return this.countries;
+    return this.countries.filter(
+      (c) => normalizeText(c.name_fr).includes(query) || normalizeText(c.name_en).includes(query)
+    );
   }
 
   bindPicking() {
@@ -866,8 +874,18 @@ class PlayController {
       .sort((a, b) => a.final_rank - b.final_rank);
     const medals = { 1: '🏆', 2: '⭐', 3: '🥉' };
     const medalNames = { 1: 'Trophée', 2: 'Étoile', 3: 'Médaille' };
+    const entry = Number(room.entry_fee || this.config.entry_fee || 0);
+    const reward = Number(me?.reward || 0);
+    const net = reward - entry;
+    const champion = Boolean(me && !me.is_forfeit && me.final_rank === 1);
 
     return `
+      ${champion ? `
+        <div class="champion-banner">
+          <span class="champion-banner__icon" aria-hidden="true">🏆</span>
+          <span>Victoire ! Vous remportez le trophée de cette partie.</span>
+        </div>` : ''}
+
       <div class="tiebreak-banner" style="border-color:rgba(242,184,75,.4);background:var(--gold-soft);color:#ffe4ac">
         <span aria-hidden="true">✦</span> Partie terminée — ${room.total_rounds} tours joués.
       </div>
@@ -901,8 +919,35 @@ class PlayController {
             ${me.is_forfeit
               ? 'Vous êtes en forfait : vous restez visible au classement mais êtes exclu du podium et des récompenses.'
               : me.final_rank
-                ? `Votre place : <strong>#${me.final_rank}</strong> · ${fmtScore(me.score)} point(s) · <strong>+${formatCredits(me.reward || 0)} crédits</strong>`
+                ? `Votre place : <strong>#${me.final_rank}</strong> · ${fmtScore(me.score)} point(s)`
                 : 'Partie terminée.'}
+          </div>
+
+          <div class="card card--flat mt-6" id="my-rewards">
+            <div class="card__title">
+              <h3>Votre bilan</h3>
+              <span class="badge badge--gold" id="my-balance-badge">Solde : …</span>
+            </div>
+            <div class="credit-receipt">
+              <div class="credit-receipt__row">
+                <span>Mise d’entrée (débitée au lancement)</span>
+                <strong>-${formatCredits(entry)} crédits</strong>
+              </div>
+              <div class="credit-receipt__row">
+                <span>Récompense de cette partie</span>
+                <strong class="${reward > 0 ? 'text-green' : 'text-red'}">${reward > 0 ? `+${formatCredits(reward)}` : '+0'} crédits</strong>
+              </div>
+              <div class="credit-receipt__row credit-receipt__row--total">
+                <span>Gain net sur la partie</span>
+                <strong class="${net >= 0 ? 'text-green' : 'text-red'}">${net >= 0 ? '+' : ''}${formatCredits(net)} crédits</strong>
+              </div>
+            </div>
+            <p class="small muted mt-2">
+              Le portefeuille reçoit la récompense à la finalisation serveur, après la mise déjà débitée.
+              C’est pourquoi le solde augmente du gain net, et non du montant brut affiché sur le podium.
+            </p>
+            <button class="btn btn--ghost btn--sm" id="refresh-gains" type="button">Actualiser mes gains</button>
+            <div id="my-trophies" class="mt-4"><p class="small muted">Chargement de vos trophées…</p></div>
           </div>` : ''}
 
         <h3 class="mt-6">Classement complet</h3>
@@ -931,6 +976,101 @@ class PlayController {
         button.textContent = 'Rejouer (nouvelle salle)';
       }
     });
+
+    // Filet de sécurité : la récompense n'est versée qu'à la finalisation serveur.
+    // Si le dernier joueur a fermé son onglet, on redemande la finalisation (idempotente).
+    if (!this.finalizeRequested) {
+      this.finalizeRequested = true;
+      advanceRoom(this.roomId).then(() => this.refresh(true)).catch(() => {});
+    }
+
+    this.root.querySelector('#refresh-gains')?.addEventListener('click', async (event) => {
+      const button = event.currentTarget;
+      button.disabled = true;
+      button.textContent = 'Actualisation…';
+      try {
+        await advanceRoom(this.roomId);
+        await this.refresh(true);
+        toast('Gains et solde actualisés.', 'success');
+      } catch (error) {
+        toast(friendlyError(error), 'error');
+        button.disabled = false;
+        button.textContent = 'Actualiser mes gains';
+      }
+    });
+
+    this.loadRewardsPanel();
+
+    if (!this.celebrated) {
+      this.celebrated = true;
+      const me = this.state.players.find((p) => p.user_id === this.userId);
+      if (me && !me.is_forfeit && me.final_rank === 1) this.celebrate();
+    }
+  }
+
+  /* Solde réel et trophées : chargés après le rendu pour ne pas bloquer le podium. */
+  async loadRewardsPanel() {
+    const panel = this.root.querySelector('#my-rewards');
+    if (!panel || this.destroyed) return;
+
+    try {
+      const { data } = await supabase
+        .from('wallets')
+        .select('balance')
+        .eq('user_id', this.userId)
+        .maybeSingle();
+      const badge = panel.querySelector('#my-balance-badge');
+      if (badge && data) badge.textContent = `Solde : ${formatCredits(data.balance)} crédits`;
+    } catch { /* solde indisponible : le bilan reste lisible */ }
+
+    const box = panel.querySelector('#my-trophies');
+    if (!box) return;
+
+    try {
+      const { data } = await supabase
+        .from('user_milestones')
+        .select('code, achieved_at, milestones(title)')
+        .eq('user_id', this.userId)
+        .order('achieved_at', { ascending: false });
+
+      if (!Array.isArray(data) || data.length === 0) {
+        box.innerHTML = `<p class="small muted">Aucun trophée pour l’instant. Terminez une partie normale
+          (sans forfait ni abandon) pour débloquer « Première partie jouée ».</p>`;
+        return;
+      }
+
+      box.innerHTML = `
+        <div class="small muted">Trophées débloqués</div>
+        <div class="trophy-grid mt-2">
+          ${data.map((m) => `
+            <div class="trophy trophy--unlocked">
+              <div class="trophy__icon" aria-hidden="true">🏆</div>
+              <div class="trophy__title">${escapeHtml(m.milestones?.title || m.code)}</div>
+              <div class="trophy__meta">${formatShortDate(m.achieved_at)}</div>
+            </div>`).join('')}
+        </div>`;
+    } catch {
+      box.innerHTML = `<p class="small muted">Trophées indisponibles pour le moment.</p>`;
+    }
+  }
+
+  celebrate() {
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const host = document.createElement('div');
+    host.className = 'confetti';
+    host.setAttribute('aria-hidden', 'true');
+    const colors = ['#FFC61A', '#2438E0', '#5B3FD0', '#0B7F57', '#FFFFFF'];
+    for (let i = 0; i < 70; i += 1) {
+      const bit = document.createElement('span');
+      bit.style.left = `${Math.random() * 100}%`;
+      bit.style.background = colors[i % colors.length];
+      bit.style.animationDelay = `${Math.random() * 0.8}s`;
+      bit.style.animationDuration = `${2.2 + Math.random() * 1.8}s`;
+      bit.style.setProperty('--dx', `${(Math.random() - 0.5) * 140}px`);
+      host.appendChild(bit);
+    }
+    document.body.appendChild(host);
+    window.setTimeout(() => host.remove(), 5200);
   }
 
   /* -------------------------------------------------------------------

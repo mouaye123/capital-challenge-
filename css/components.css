@@ -7,6 +7,7 @@
 /* Boutons : pastille avec une « arête » basse qui s'écrase au clic ------ */
 .btn {
   --btn-bg: var(--panel); --btn-fg: var(--ink); --btn-sh: rgba(12, 26, 75, .16);
+  position: relative; overflow: hidden;
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   min-height: 48px; padding: 11px 22px;
   border: 1.5px solid var(--line-strong); border-radius: 999px;
@@ -20,6 +21,13 @@
 .btn:disabled, .btn[aria-disabled="true"] { opacity: .45; cursor: not-allowed; transform: none; box-shadow: none; }
 .btn--gold { --btn-bg: var(--gold); --btn-sh: #C99400; border-color: transparent; }
 .btn--gold:hover { background: var(--gold-strong); }
+.btn--gold::after {
+  content: ""; position: absolute; top: -20%; left: -70%; width: 45%; height: 140%;
+  transform: skewX(-18deg); opacity: 0; pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .7), transparent);
+}
+.btn--gold:hover::after { animation: sheen .8s var(--ease-out); }
+@keyframes sheen { 0% { left: -70%; opacity: .95; } 100% { left: 130%; opacity: 0; } }
 .btn--teal { --btn-bg: var(--blue); --btn-fg: #fff; --btn-sh: var(--blue-deep); border-color: transparent; }
 .btn--teal:hover { background: #3447EC; }
 .btn--ghost { --btn-bg: transparent; --btn-fg: var(--text-soft); box-shadow: none; }
@@ -35,6 +43,12 @@
 .card {
   background: var(--panel); border: 1px solid var(--line);
   border-radius: var(--radius); padding: var(--space-5); box-shadow: var(--shadow-soft);
+  transition: transform .2s var(--ease-out), box-shadow .2s var(--ease-out), border-color .2s;
+}
+@media (hover: hover) {
+  .card:hover { transform: translateY(-2px); box-shadow: var(--shadow); border-color: var(--line-strong); }
+  .card--flat:hover, .round-card:hover, .room-shell .card:hover { transform: none; box-shadow: var(--shadow-soft); }
+  .mission-card:hover, .feature-card:hover, .stat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-soft); }
 }
 .card--flat { box-shadow: none; background: var(--panel-2); }
 .card--gold { background: #FFF3C7; border-color: rgba(122, 82, 0, .25); }
@@ -139,7 +153,12 @@
 
 /* Progression --------------------------------------------------------- */
 .progress { height: 10px; border-radius: 999px; background: var(--panel-3); overflow: hidden; }
-.progress > span { display: block; height: 100%; border-radius: inherit; background: var(--blue); transition: width .3s ease; }
+.progress > span {
+  display: block; height: 100%; border-radius: inherit;
+  background: linear-gradient(90deg, var(--blue), #5B72FF 60%, #7C8CFF);
+  box-shadow: 0 0 12px rgba(36, 56, 224, .35);
+  transition: width .45s var(--ease-out);
+}
 
 /* Toasts -------------------------------------------------------------- */
 .toast-host {
@@ -174,14 +193,20 @@
   letter-spacing: .22em; color: var(--ink); background: var(--gold);
 }
 
-/* Chronomètre --------------------------------------------------------- */
+/* Chronomètre : chiffres à chasse fixe pour ne jamais « sauter ». */
 .timer {
-  font-family: var(--font-mono); font-size: clamp(2.4rem, 9vw, 4rem); font-weight: 800;
-  line-height: 1; color: var(--ink); font-variant-numeric: tabular-nums;
+  font-family: var(--font-numeric); font-size: clamp(2.6rem, 10vw, 4.4rem); font-weight: 700;
+  line-height: 1; color: var(--ink);
+  font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1;
+  letter-spacing: .015em; text-shadow: 0 0 26px rgba(36, 56, 224, .12);
+  transition: color .2s ease;
 }
-.timer--warn { color: var(--gold-ink); }
+.timer--warn { color: var(--gold-ink); animation: timer-warm 1.4s ease-in-out infinite; }
 .timer--danger { color: var(--red); animation: pulse 1s ease-in-out infinite; }
 @keyframes pulse { 50% { opacity: .55; } }
+@keyframes timer-warm {
+  50% { text-shadow: 0 0 24px rgba(255, 198, 26, .8); }
+}
 
 /* Divers -------------------------------------------------------------- */
 .kbd {

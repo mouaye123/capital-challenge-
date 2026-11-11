@@ -21,6 +21,7 @@ Quiz multijoueur en temps réel sur les capitales du monde, de A à Z.
    4. `supabase/sql/04_moteur.sql`
    5. `supabase/sql/05_missions.sql`
    6. `supabase/sql/06_achats.sql`
+   7. `supabase/sql/07_correctif.sql` (missions, chrono 15 s, achats fermés)
 3. Renseigner `js/config.js` avec l'URL du projet et la clé **anon / publishable**.
 4. Servir le dossier en HTTP (les modules ES ne fonctionnent pas en `file://`) :
    ```powershell
@@ -39,14 +40,14 @@ La procédure complète (Auth, GitHub Pages, Realtime, achats) est dans [`docs/D
 - `2 000` crédits de bienvenue et bonus quotidien de `50` crédits (journée UTC).
 - Salles privées avec code à 6 caractères ou lien d'invitation.
 - Salle d'attente temps réel : prêt, hôte, expiration, transfert d'hôte.
-- Choix d'un pays non encore joué, capitale secrète, puis réponse en 35 secondes.
+- Choix d'un pays non encore joué, capitale secrète, puis réponse en 15 secondes.
 - Révélation anticipée dès que tous les répondants présents ont validé.
 - Correction automatique : accents et ponctuation ignorés, variantes anglaises, petites fautes avec joker.
 - Anti-collision entre capitales proches (Kingston ≠ Kingstown).
 - Podium, départage par blocs d'au moins 5 pays (multiples du nombre de joueurs actifs), départage final par réponses parfaites puis temps de réponse.
 - Récompenses `400 / 200 / 150` crédits, versées une seule fois.
 - Missions quotidiennes, paliers, statistiques et historique.
-- Portefeuille, transactions et achat de crédits en **mode test**.
+- Portefeuille, transactions et **boutique fermée par défaut** (aucun achat possible tant que le paiement n'est pas vérifié).
 - Responsive mobile d'abord, navigation mobile, focus visible, `aria-live`, contrastes soignés.
 
 ---
@@ -100,7 +101,10 @@ docs/                      Décisions, design, déploiement, tests, capitales
 - Les fonctions internes (`grade_answer`, `finalize_room`, `wallet_apply`…) ne sont pas exécutables par `authenticated`.
 - `credit_purchase` est réservée à `service_role` pour le webhook de paiement.
 
-⚠️ **Mode test de paiement** : `payments_test_mode = 1` crédite immédiatement tout achat. À passer à `0` avant toute mise en production, puis brancher un webhook serveur vérifié.
+⚠️ **Boutique fermée** : par défaut (`PURCHASES_ENABLED = false` dans `js/config.js` et
+`payments_test_mode = 0` côté serveur), aucun achat ne peut être crédité. Pour rouvrir la
+boutique, il faudra un webhook de paiement vérifié, réactiver l'interrupteur frontend et
+redonner l'autorisation d'exécuter `create_purchase` (voir `supabase/sql/07_correctif.sql`).
 
 ---
 

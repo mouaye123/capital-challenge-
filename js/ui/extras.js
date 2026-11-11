@@ -6,7 +6,8 @@ import { getUser } from '../auth.js';
 import { getDailyMissions } from '../missions.js';
 import { fetchHistory } from '../history.js';
 import { fetchWallet } from '../wallet.js';
-import { getGameConfig } from '../gameConfig.js';
+import { getGameConfig, DEFAULT_CONFIG } from '../gameConfig.js';
+import { PURCHASES_ENABLED } from '../config.js';
 import { navigate } from '../router.js';
 import {
   escapeHtml, formatCredits, formatDate, formatShortDate, friendlyError,
@@ -22,15 +23,19 @@ export async function renderMissions(root) {
 
   root.innerHTML = `<div class="loading-block"><div class="spinner" role="status"></div>Chargement des missions…</div>`;
 
-  let missions, config;
+  let missions = [];
+  let missionsError = null;
+  let config = DEFAULT_CONFIG;
+
+  config = await getGameConfig();
   try {
-    [missions, config] = await Promise.all([getDailyMissions(), getGameConfig()]);
+    missions = await getDailyMissions();
   } catch (error) {
-    root.innerHTML = `<div class="alert alert--error">${escapeHtml(friendlyError(error))}</div>`;
-    return;
+    missionsError = error;
+    console.error('Missions indisponibles :', error?.message || error);
   }
 
-  if (missions.length === 0) {
+  if (!missionsError && missions.length === 0) {
     console.warn('Aucune mission générée : vérifier que 05_missions.sql est exécuté et que mission_templates contient ses 12 modèles.');
   }
 
@@ -46,13 +51,28 @@ export async function renderMissions(root) {
       <div class="badge badge--gold">${formatCredits(totalEarned)} / ${formatCredits(totalPossible)} crédits gagnés</div>
     </div>
 
-    ${missions.length === 0 ? `
+    ${missionsError ? `
+      <div class="alert alert--error">
+        <strong>Impossible de charger les missions.</strong><br>
+        ${escapeHtml(friendlyError(missionsError))}
+        <details class="mt-2 small">
+          <summary>Détail technique</summary>
+          <pre style="white-space:pre-wrap;margin:8px 0 0">${escapeHtml(missionsError?.message || String(missionsError))}</pre>
+        </details>
+        <div class="row mt-4">
+          <button class="btn btn--ghost btn--sm" id="retry-missions" type="button">Réessayer</button>
+          <a class="btn btn--ghost btn--sm" href="#/tableau-de-bord">Tableau de bord</a>
+        </div>
+      </div>` : missions.length === 0 ? `
       <div class="empty">
         <div class="empty__icon">✦</div>
         <h2>Aucune mission pour aujourd’hui</h2>
         <p>Les missions sont créées automatiquement à votre première visite du jour.
-           Si ce message persiste, réessayez après avoir rechargé la page.</p>
-        <a class="btn btn--ghost" href="#/jouer">Aller jouer</a>
+           Si ce message persiste, le catalogue de missions n’est probablement pas installé côté serveur.</p>
+        <div class="row" style="justify-content:center">
+          <button class="btn btn--ghost" id="retry-missions" type="button">Réessayer</button>
+          <a class="btn btn--ghost" href="#/jouer">Aller jouer</a>
+        </div>
       </div>` : `
       <div class="grid grid--3">
         ${missions.map((mission) => {
@@ -86,6 +106,8 @@ export async function renderMissions(root) {
       </ul>
       <a class="btn btn--ghost mt-4" href="#/jouer">Jouer pour progresser</a>
     </section>`;
+
+  root.querySelector('#retry-missions')?.addEventListener('click', () => renderMissions(root));
 }
 
 /* =====================================================================
@@ -162,6 +184,31 @@ export async function renderHistory(root) {
 export async function renderPurchase(root) {
   const user = await getUser();
   if (!user) { navigate('/connexion'); return; }
+
+  if (!PURCHASES_ENABLED) {
+    root.innerHTML = `
+      <div class="page-head">
+        <div>
+          <h1>Boutique fermée</h1>
+          <p>Les achats de crédits sont temporairement désactivés.</p>
+        </div>
+        <a class="btn btn--ghost" href="#/portefeuille">Mon portefeuille</a>
+      </div>
+
+      <div class="empty">
+        <div class="empty__icon">🔒</div>
+        <h2>Aucun achat possible pour le moment</h2>
+        <p>La recharge de crédits est suspendue pour garantir un classement équitable.
+           Aucun débit ne peut être effectué depuis cette page.</p>
+        <p class="small muted">Vous pouvez toujours gagner des crédits avec le bonus quotidien,
+           les missions et les récompenses de partie.</p>
+        <div class="row" style="justify-content:center">
+          <a class="btn btn--gold" href="#/portefeuille">Voir mon solde</a>
+          <a class="btn btn--ghost" href="#/missions">Faire mes missions</a>
+        </div>
+      </div>`;
+    return;
+  }
 
   root.innerHTML = `<div class="loading-block"><div class="spinner" role="status"></div>Chargement de la boutique…</div>`;
 

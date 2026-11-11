@@ -6,6 +6,7 @@ import { fetchWallet, fetchTransactions, claimDailyBonus, transactionLabel } fro
 import { serverNow } from '../rooms.js';
 import { getGameConfig } from '../gameConfig.js';
 import { navigate } from '../router.js';
+import { PURCHASES_ENABLED } from '../config.js';
 import { escapeHtml, formatCredits, formatDate, friendlyError, toast } from '../utils.js';
 
 // Date UTC calculée avec l'horloge serveur (repli sur l'horloge locale avant synchro).
@@ -39,8 +40,16 @@ export async function renderWallet(root) {
         <h1>Portefeuille</h1>
         <p>Vos crédits virtuels, vos gains et vos dépenses.</p>
       </div>
-      <a class="btn btn--gold" href="#/achat">Acheter des crédits</a>
+      ${PURCHASES_ENABLED
+        ? '<a class="btn btn--gold" href="#/achat">Acheter des crédits</a>'
+        : '<span class="badge" title="Achats temporairement désactivés">Boutique fermée</span>'}
     </div>
+
+    ${PURCHASES_ENABLED ? '' : `
+      <div class="alert alert--info" style="margin-bottom:20px">
+        <strong>Boutique fermée :</strong> les achats de crédits sont désactivés.
+        Gagnez des crédits avec le bonus quotidien, les missions et les récompenses de partie.
+      </div>`}
 
     <section class="balance-hero">
       <div>
