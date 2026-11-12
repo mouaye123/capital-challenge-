@@ -51,13 +51,28 @@ export function getCountries() {
 /* ---------------------------------------------------------------------
    Actions de salle
    --------------------------------------------------------------------- */
+/* ---------------------------------------------------------------------
+   Salles abandonnées
+   --------------------------------------------------------------------- */
+/** Ferme les salles abandonnées du joueur pour ne pas bloquer la création. */
+export async function cleanupStaleRooms(minutes = 10) {
+  try {
+    const { error } = await supabase.rpc('cleanup_my_rooms', { p_minutes: minutes });
+    if (error) console.warn('Nettoyage des salles ignoré :', error.message);
+  } catch (error) {
+    console.warn('Nettoyage des salles ignoré :', error?.message || error);
+  }
+}
+
 export async function createRoom(target) {
+  await cleanupStaleRooms();
   const { data, error } = await supabase.rpc('create_room', { p_target: target });
   if (error) throw error;
   return data;
 }
 
 export async function joinRoom(code) {
+  await cleanupStaleRooms();
   const { data, error } = await supabase.rpc('join_room', { p_code: code });
   if (error) throw error;
   return data;
@@ -173,6 +188,7 @@ export async function fetchRoomSnapshot(roomId) {
 
 /** Salle active du joueur (pour reprendre une partie après rechargement). */
 export async function findActiveRoom(userId) {
+  await cleanupStaleRooms();
   const { data, error } = await supabase
     .from('room_players')
     .select('room_id, joined_at, rooms!inner(id, code, phase)')

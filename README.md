@@ -31,6 +31,7 @@ Ouvrir **Supabase → SQL Editor**, puis coller et exécuter chaque fichier, l'u
 | 8 | `supabase/sql/08_missions_fix.sql` | **Réparation des missions** : structure, catalogue, moteur, test réel |
 | 9 | `supabase/sql/09_missions_rebuild.sql` | Reconstruction propre des tables de missions (sauvegarde + test réel) |
 | 10 | `supabase/sql/10_pick_inscription.sql` | **Choix du pays 30 s (validation fiabilisée) + inscription sans e-mail** |
+| 11 | `supabase/sql/11_salles_abandonnees.sql` | Ferme les parties abandonnées, rembourse la mise, débloque la création de salle |
 
 Chaque fichier est **autonome et ré-exécutable** : on peut le relancer sans risque, aucune
 donnée n'est supprimée. `08_missions_fix.sql` reconstruit les tables de missions si elles
@@ -58,6 +59,11 @@ Le résultat attendu :
 choix_secondes = 30 | reponse_secondes = 15 | fonctions_submit_pick = 1
 confirmation_auto = 1 | comptes_non_confirmes = 0
 ```
+
+`11_salles_abandonnees.sql` ferme les parties laissées en cours (aucune activité depuis
+10 minutes) et **rembourse les frais d'entrée**. Sans cela, une salle abandonnée bloque
+définitivement la création de nouvelles salles. Le site appelle ensuite `cleanup_my_rooms()`
+automatiquement à l'entrée de l'écran « Jouer ».
 
 ### 2. Configurer le frontend
 
