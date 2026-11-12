@@ -245,7 +245,11 @@ class PlayController {
       return;
     }
 
-    if (remaining <= 0 && Date.now() - this.lastAdvanceAt > 1300) {
+    // Petit délai de grâce pendant le choix du pays : si le joueur clique juste
+    // à la fin du chrono, son envoi arrive avant le tirage au hasard.
+    const lateGrace = room.phase === 'picking' ? 2000 : 0;
+
+    if (remaining <= -lateGrace && Date.now() - this.lastAdvanceAt > 1300) {
       this.lastAdvanceAt = Date.now();
       const jitter = Math.floor(Math.random() * 500);
       window.setTimeout(async () => {

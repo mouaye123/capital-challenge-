@@ -14,10 +14,9 @@ select 'Correctif 10 — choix du pays et inscription' as etape;
 -- =====================================================================
 
 -- ---------------------------------------------------------------------
--- 1. Choix du pays : 60 secondes au lieu de 30
---    195 pays à parcourir + saisir la capitale en 30 s est trop court :
---    le délai expirait pendant la saisie, le serveur tirait un pays au
---    hasard et la validation était refusée (« trop tard »).
+-- 1. Choix du pays : 30 secondes (valeur confirmée)
+--    Le réglage est réécrit explicitement pour annuler tout réglage
+--    précédent (par exemple un 60 s essayé entre-temps).
 -- ---------------------------------------------------------------------
 do $$
 declare
@@ -49,11 +48,11 @@ begin
     'insert into public.game_config (key, value)
      select $1, %s
      where not exists (select 1 from public.game_config g where g.key = $1)', v_cast)
-  using 'pick_seconds', 60;
+  using 'pick_seconds', 30;
 
   execute format(
     'update public.game_config set value = %s where key = $1', v_cast)
-  using 'pick_seconds', 60;
+  using 'pick_seconds', 30;
 end;
 $$;
 
@@ -108,7 +107,9 @@ begin
   if v_room.id is null then
     return jsonb_build_object('ok', false, 'reason', 'room_not_found');
   end if;
-  if v_room.phase <> 'picking' then
+  -- « answering » est accepté : le pays a pu être tiré au hasard pendant la
+  -- saisie, le choix du joueur doit encore pouvoir le remplacer (voir plus bas).
+  if v_room.phase not in ('picking', 'answering') then
     return jsonb_build_object('ok', false, 'reason', 'not_picking');
   end if;
 
@@ -123,10 +124,15 @@ begin
     return jsonb_build_object('ok', false, 'reason', 'not_your_turn');
   end if;
 
-  -- Un pays a déjà été tiré au hasard : le choix manuel n'est plus possible.
-  -- (C'est le seul cas où l'on refuse réellement : « trop tard ».)
+  -- Refus uniquement si un pays a déjà été choisi à la main (vrai « trop
+  -- tard ») ou si le tirage automatique a déjà reçu des réponses.
   if v_round.country_id is not null then
-    return jsonb_build_object('ok', false, 'reason', 'too_late');
+    if not v_round.auto_picked then
+      return jsonb_build_object('ok', false, 'reason', 'too_late');
+    end if;
+    if exists (select 1 from answers where round_id = v_round.id) then
+      return jsonb_build_object('ok', false, 'reason', 'too_late');
+    end if;
   end if;
 
   if exists (
