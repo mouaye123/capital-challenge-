@@ -30,6 +30,7 @@ Ouvrir **Supabase → SQL Editor**, puis coller et exécuter chaque fichier, l'u
 | 7 | `supabase/sql/07_correctif.sql` | Correctif final : missions, chrono 15 s, achats fermés, diagnostic |
 | 8 | `supabase/sql/08_missions_fix.sql` | **Réparation des missions** : structure, catalogue, moteur, test réel |
 | 9 | `supabase/sql/09_missions_rebuild.sql` | Reconstruction propre des tables de missions (sauvegarde + test réel) |
+| 10 | `supabase/sql/10_pick_inscription.sql` | **Choix du pays 60 s + validation fiabilisée + inscription sans e-mail** |
 
 Chaque fichier est **autonome et ré-exécutable** : on peut le relancer sans risque, aucune
 donnée n'est supprimée. `08_missions_fix.sql` reconstruit les tables de missions si elles
@@ -40,6 +41,21 @@ teste la génération sur les vrais comptes et affiche le résultat :
 structure = compatible | faciles = 4 | moyennes = 4 | difficiles = 4
 comptes_ok = (nombre de comptes) | comptes_ko = 0 | premiere_erreur = aucune
 missions_du_jour = (nombre de comptes × 3)
+```
+
+`10_pick_inscription.sql` règle les deux derniers blocages :
+
+- **choix du pays** : 60 s au lieu de 30 s, et la validation n'est plus refusée si le chrono
+  vient d'expirer (le choix du joueur passe avant le tirage au hasard) ;
+- **inscription** : l'adresse e-mail est marquée comme confirmée à la création du compte,
+  donc plus besoin de recevoir l'e-mail de confirmation. Les comptes déjà créés mais non
+  confirmés sont confirmés au passage.
+
+Le résultat attendu :
+
+```
+choix_secondes = 60 | reponse_secondes = 15 | fonctions_submit_pick = 1
+confirmation_auto = 1 | comptes_non_confirmes = 0
 ```
 
 ### 2. Configurer le frontend

@@ -46,6 +46,20 @@ function timerHtml(target) {
   return `<div class="timer js-timer" data-target="${escapeHtml(target)}" role="timer" aria-live="polite">--</div>`;
 }
 
+/* Causes renvoyées par submit_pick : message clair pour le joueur. */
+const PICK_REASONS = {
+  too_late: 'Le temps de choix est écoulé et un pays a déjà été tiré au hasard. Attends la révélation.',
+  not_picking: 'La manche a déjà avancé : ton choix n’a pas été enregistré.',
+  not_your_turn: 'Ce n’est pas ton tour de proposer un pays.',
+  country_already_played: 'Ce pays a déjà été joué dans cette partie. Choisis-en un autre.',
+  unknown_country: 'Ce pays est introuvable. Recharge la page.',
+  room_not_found: 'Cette salle n’existe plus.',
+  round_not_found: 'Cette manche n’existe plus. Recharge la page.',
+  not_authenticated: 'Ta session a expiré. Reconnecte-toi.',
+  invalid_capital: 'Saisis une vraie capitale (au moins une lettre).',
+  capital_too_long: 'La capitale est limitée à 60 caractères.'
+};
+
 function scoreboardHtml(players, meId, { final = false } = {}) {
   const sorted = [...players].sort((a, b) => {
     if (a.is_forfeit !== b.is_forfeit) return a.is_forfeit ? 1 : -1;
@@ -209,18 +223,6 @@ class PlayController {
     if (!deadline) return;
 
     const remaining = new Date(deadline).getTime() - serverNow();
-
-    // Proposant absent : on déclenche le tirage automatique sans attendre la fin.
-    if (room.phase === 'picking' && round) {
-      const proposer = state.players.find((p) => p.user_id === round.proposer_id);
-      const lastSeen = proposer?.last_seen_at ? new Date(proposer.last_seen_at).getTime() : 0;
-      if (proposer && !proposer.is_forfeit && lastSeen > 0 && lastSeen < serverNow() - 30000
-          && Date.now() - this.lastAdvanceAt > 2000) {
-        this.lastAdvanceAt = Date.now();
-        advanceRoom(this.roomId).then(() => this.refresh()).catch(() => {});
-        return;
-      }
-    }
 
     // Envoi automatique de la saisie en cours juste avant la fin du chrono.
     if (room.phase === 'answering' && round && remaining <= 350) {
@@ -588,7 +590,10 @@ class PlayController {
           <span class="field__hint">Aucune autocomplétion n’est proposée : elle révélerait la réponse.</span>
         </div>
 
+        <div class="alert alert--error hidden" id="pick-error" role="alert"></div>
+
         <button class="btn btn--gold btn--lg btn--block" type="submit" id="pick-btn">Lancer le défi</button>
+        <p class="small muted" style="margin:0">Une fois lancé, les autres joueurs ont ${this.config.answer_seconds} secondes pour trouver la capitale.</p>
       </form>`;
   }
 
@@ -757,32 +762,80 @@ class PlayController {
       if (round) store(`secret-draft:${round.id}`, secret.value);
     });
 
-    form?.addEventListener('submit', async (event) => {
-      event.preventDefault();
-      const button = this.root.querySelector('#pick-btn');
+    const button = this.root.querySelector('#pick-btn');
+    const errorBox = this.root.querySelector('#pick-error');
+    let busy = false;
+
+    const showError = (message, detail) => {
+      const text = detail ? `${message} (détail : ${detail})` : message;
+      if (errorBox) {
+        errorBox.textContent = text;
+        errorBox.classList.remove('hidden');
+      }
+      toast(message, 'error');
+    };
+
+    const submitPickNow = async () => {
+      if (busy) return;
       const capital = secret?.value.trim() || '';
       const countryId = this.selectedCountryId;
 
-      if (!countryId) { toast('Choisissez d’abord un pays.', 'error'); return; }
-      if (!capital) { toast('Saisissez la capitale secrète.', 'error'); secret?.focus(); return; }
-      if (capital.length > 60) { toast('La capitale est limitée à 60 caractères.', 'error'); return; }
+      if (errorBox) {
+        errorBox.classList.add('hidden');
+        errorBox.textContent = '';
+      }
 
-      button.disabled = true;
-      button.textContent = 'Envoi…';
+      if (!countryId) { showError('Choisissez d’abord un pays.'); return; }
+      if (!capital) { showError('Saisissez la capitale secrète.'); secret?.focus(); return; }
+      if (capital.length > 60) { showError('La capitale est limitée à 60 caractères.'); return; }
+
+      busy = true;
+      if (button) {
+        button.disabled = true;
+        button.textContent = 'Envoi…';
+      }
+      const release = () => {
+        busy = false;
+        if (button) {
+          button.disabled = false;
+          button.textContent = 'Lancer le défi';
+        }
+      };
+
       try {
         const result = await submitPick(this.roomId, countryId, capital);
         if (result && result.ok === false) {
-          throw new Error(result.reason === 'too_late' ? 'Trop tard : le délai est écoulé.' : 'Envoi impossible.');
+          showError(
+            PICK_REASONS[result.reason] || 'Envoi impossible.',
+            result.reason || 'inconnu'
+          );
+          release();
+          // La manche a changé d'état : on resynchronise l'écran.
+          if (['too_late', 'not_picking', 'round_not_found', 'room_not_found'].includes(result.reason)) {
+            await this.refresh(true);
+          }
+          return;
         }
         saveSecret(this.state.round.id, capital);
         this.selectedCountryId = null;
         toast('Défi lancé !', 'success');
         await this.refresh(true);
       } catch (error) {
-        toast(friendlyError(error), 'error');
-        button.disabled = false;
-        button.textContent = 'Lancer le défi';
+        showError(friendlyError(error));
+        release();
       }
+    };
+
+    // Clic direct sur le bouton : indépendant de la soumission du formulaire.
+    button?.addEventListener('click', (event) => {
+      event.preventDefault();
+      submitPickNow();
+    });
+
+    // Touche Entrée dans un champ du formulaire.
+    form?.addEventListener('submit', (event) => {
+      event.preventDefault();
+      submitPickNow();
     });
 
   }

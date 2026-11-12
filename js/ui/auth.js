@@ -1,10 +1,10 @@
 /* =====================================================================
    Écrans de connexion et d'inscription.
    ===================================================================== */
-import { signIn, signUp } from '../auth.js';
+import { signIn, signUp, resendConfirmation } from '../auth.js';
 import { navigate } from '../router.js';
 import { getGameConfig } from '../gameConfig.js';
-import { formatCredits, friendlyError, toast } from '../utils.js';
+import { escapeHtml, formatCredits, friendlyError, toast } from '../utils.js';
 import { resumePendingRoom } from '../sessionFlow.js';
 
 function authShell({ title, subtitle, body, footer }) {
@@ -43,11 +43,38 @@ export function renderLogin(root) {
         <button class="btn btn--gold btn--block btn--lg" type="submit" id="submit-btn">
           Se connecter
         </button>
+        <button class="btn btn--ghost btn--sm btn--block" type="button" id="resend-link">
+          Je n’ai pas reçu l’e-mail de confirmation
+        </button>
+        <p class="tiny muted hidden" id="resend-note" role="status"></p>
       </form>`,
     footer: `Pas encore de compte ? <a href="#/inscription">Créer un compte</a>`
   });
 
   const form = root.querySelector('#login-form');
+  const resendNote = root.querySelector('#resend-note');
+
+  root.querySelector('#resend-link')?.addEventListener('click', async (event) => {
+    const email = form.email.value.trim();
+    if (!email) {
+      resendNote.textContent = 'Renseignez d’abord votre adresse e-mail ci-dessus.';
+      resendNote.classList.remove('hidden');
+      return;
+    }
+    const button = event.currentTarget;
+    button.disabled = true;
+    button.textContent = 'Envoi…';
+    try {
+      await resendConfirmation(email);
+      resendNote.textContent = 'E-mail de confirmation renvoyé. Pensez à vérifier les indésirables.';
+    } catch (error) {
+      resendNote.textContent = friendlyError(error);
+    } finally {
+      resendNote.classList.remove('hidden');
+      button.disabled = false;
+      button.textContent = 'Je n’ai pas reçu l’e-mail de confirmation';
+    }
+  });
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
     const errorBox = root.querySelector('#form-error');
@@ -144,16 +171,54 @@ export async function renderRegister(root) {
     button.textContent = 'Création…';
     try {
       const data = await signUp({ email, password, username });
+
+      // 1) Session immédiate : confirmation e-mail déjà désactivée côté serveur.
       if (data.session) {
         toast(`Compte créé. Vos ${formatCredits(config.welcome_bonus)} crédits sont disponibles.`, 'success');
         const resumed = await resumePendingRoom(data.user);
         if (!resumed) navigate('/tableau-de-bord');
-      } else {
-        successBox.innerHTML = 'Compte créé. <strong>Vérifiez votre boîte e-mail</strong> pour confirmer votre adresse, puis connectez-vous.';
-        successBox.classList.remove('hidden');
-        button.disabled = true;
-        button.textContent = 'En attente de confirmation';
+        return;
       }
+
+      // 2) Pas de session : on tente une connexion directe. Si le serveur
+      //    considère le compte comme confirmé (correctif 10), c'est réglé.
+      try {
+        const login = await signIn({ email, password });
+        toast(`Compte créé. Vos ${formatCredits(config.welcome_bonus)} crédits sont disponibles.`, 'success');
+        const resumed = await resumePendingRoom(login.user);
+        if (!resumed) navigate('/tableau-de-bord');
+        return;
+      } catch {
+        // Confirmation e-mail réellement exigée : on propose un renvoi.
+      }
+
+      successBox.innerHTML = `
+        <strong>Compte créé.</strong><br>
+        Un e-mail de confirmation a été envoyé à <strong>${escapeHtml(email)}</strong>.
+        S’il n’arrive pas, utilisez le bouton ci-dessous, puis vérifiez les indésirables.
+        <button class="btn btn--ghost btn--sm btn--block" type="button" id="resend-btn" style="margin-top:10px">
+          Renvoyer l’e-mail de confirmation
+        </button>
+        <span class="tiny" id="resend-out"></span>`;
+      successBox.classList.remove('hidden');
+      button.disabled = true;
+      button.textContent = 'En attente de confirmation';
+
+      const resendBtn = successBox.querySelector('#resend-btn');
+      const resendOut = successBox.querySelector('#resend-out');
+      resendBtn?.addEventListener('click', async () => {
+        resendBtn.disabled = true;
+        resendBtn.textContent = 'Envoi…';
+        try {
+          await resendConfirmation(email);
+          resendOut.textContent = ' E-mail renvoyé.';
+        } catch (error) {
+          resendOut.textContent = ' ' + friendlyError(error);
+        } finally {
+          resendBtn.disabled = false;
+          resendBtn.textContent = 'Renvoyer l’e-mail de confirmation';
+        }
+      });
     } catch (error) {
       fail(friendlyError(error));
       button.disabled = false;

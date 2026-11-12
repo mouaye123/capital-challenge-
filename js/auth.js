@@ -36,6 +36,16 @@ export async function signIn({ email, password }) {
   return data;
 }
 
+/** Renvoie l'e-mail de confirmation d'inscription. */
+export async function resendConfirmation(email) {
+  const { error } = await supabase.auth.resend({
+    type: 'signup',
+    email: email.trim(),
+    options: { emailRedirectTo: window.location.origin + window.location.pathname }
+  });
+  if (error) throw error;
+}
+
 export async function signOut() {
   await supabase.auth.signOut();
 }
