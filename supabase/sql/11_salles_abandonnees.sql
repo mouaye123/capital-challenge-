@@ -12,7 +12,7 @@ select 'Correctif 11 — salles abandonnées' as etape;
 --
 -- Ce fichier :
 --   • ferme les salles réellement abandonnées (aucune activité depuis
---     10 minutes) ;
+--     5 minutes) ;
 --   • rembourse les frais d'entrée des parties interrompues ;
 --   • fournit cleanup_my_rooms() pour que le site débloque tout seul.
 --
@@ -23,7 +23,7 @@ select 'Correctif 11 — salles abandonnées' as etape;
 -- ---------------------------------------------------------------------
 -- 1. Fermeture des salles abandonnées (+ remboursement de la mise)
 -- ---------------------------------------------------------------------
-create or replace function cc_close_stale_rooms(p_minutes int default 10, p_user uuid default null)
+create or replace function cc_close_stale_rooms(p_minutes int default 5, p_user uuid default null)
 returns jsonb
 language plpgsql
 security definer
@@ -91,7 +91,7 @@ $$;
 -- ---------------------------------------------------------------------
 -- 2. Fonction appelée par le site : débloque le joueur connecté
 -- ---------------------------------------------------------------------
-create or replace function cleanup_my_rooms(p_minutes int default 10)
+create or replace function cleanup_my_rooms(p_minutes int default 5)
 returns jsonb
 language plpgsql
 security definer
@@ -103,7 +103,7 @@ begin
   if v_uid is null then
     return jsonb_build_object('ok', false, 'reason', 'not_authenticated');
   end if;
-  return cc_close_stale_rooms(greatest(1, coalesce(p_minutes, 10)), v_uid);
+  return cc_close_stale_rooms(greatest(1, coalesce(p_minutes, 5)), v_uid);
 end;
 $$;
 
@@ -116,7 +116,7 @@ notify pgrst, 'reload schema';
 -- ---------------------------------------------------------------------
 -- 3. Nettoyage immédiat + résultat
 -- ---------------------------------------------------------------------
-select cc_close_stale_rooms(10, null) as nettoyage;
+select cc_close_stale_rooms(5, null) as nettoyage;
 
 select
   (select count(*) from rooms where phase in ('waiting','picking','answering','revealing'))

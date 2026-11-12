@@ -61,7 +61,7 @@ confirmation_auto = 1 | comptes_non_confirmes = 0
 ```
 
 `11_salles_abandonnees.sql` ferme les parties laissées en cours (aucune activité depuis
-10 minutes) et **rembourse les frais d'entrée**. Sans cela, une salle abandonnée bloque
+5 minutes) et **rembourse les frais d'entrée**. Sans cela, une salle abandonnée bloque
 définitivement la création de nouvelles salles. Le site appelle ensuite `cleanup_my_rooms()`
 automatiquement à l'entrée de l'écran « Jouer ».
 

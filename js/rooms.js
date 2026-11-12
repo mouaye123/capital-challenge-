@@ -55,7 +55,7 @@ export function getCountries() {
    Salles abandonnées
    --------------------------------------------------------------------- */
 /** Ferme les salles abandonnées du joueur pour ne pas bloquer la création. */
-export async function cleanupStaleRooms(minutes = 10) {
+export async function cleanupStaleRooms(minutes = 5) {
   try {
     const { error } = await supabase.rpc('cleanup_my_rooms', { p_minutes: minutes });
     if (error) console.warn('Nettoyage des salles ignoré :', error.message);
