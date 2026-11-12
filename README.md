@@ -33,6 +33,7 @@ Ouvrir **Supabase → SQL Editor**, puis coller et exécuter chaque fichier, l'u
 | 10 | `supabase/sql/10_pick_inscription.sql` | **Choix du pays 30 s (validation fiabilisée) + inscription sans e-mail** |
 | 11 | `supabase/sql/11_salles_abandonnees.sql` | Ferme les parties abandonnées, rembourse la mise, débloque la création de salle |
 | 12 | `supabase/sql/12_round_secrets.sql` | **Corrige la table `round_secrets`** (colonne `secret` manquante) + audit des colonnes |
+| 13 | `supabase/sql/13_manches_uuid.sql` | **Corrige les identifiants de manche** (`rounds.id` en bigint → uuid) + remboursement des parties en cours |
 
 Chaque fichier est **autonome et ré-exécutable** : on peut le relancer sans risque, aucune
 donnée n'est supprimée. `08_missions_fix.sql` reconstruit les tables de missions si elles
@@ -76,6 +77,19 @@ colonnes_manquantes = []
 ```
 
 `colonnes_manquantes = []` signifie que toutes les colonnes utilisées par le moteur existent.
+
+`13_manches_uuid.sql` corrige l'erreur `column "round_id" is of type uuid but expression is of
+type bigint` : dans cette base, `rounds.id` (et `answers.round_id`) venaient d'une ancienne
+version en `bigint`. Le fichier sauvegarde `rounds / answers / round_secrets`, ferme les
+parties en cours en **remboursant la mise**, puis reconstruit les trois tables en `uuid`
+conformément au schéma officiel. S'il n'y a rien à corriger, il ne touche à rien.
+
+Résultat attendu :
+
+```
+type_rounds_id = uuid | type_answers_round_id = uuid | type_secrets_round_id = uuid
+manches = 0 | reponses = 0
+```
 
 ### 2. Configurer le frontend
 
