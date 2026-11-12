@@ -32,6 +32,7 @@ Ouvrir **Supabase → SQL Editor**, puis coller et exécuter chaque fichier, l'u
 | 9 | `supabase/sql/09_missions_rebuild.sql` | Reconstruction propre des tables de missions (sauvegarde + test réel) |
 | 10 | `supabase/sql/10_pick_inscription.sql` | **Choix du pays 30 s (validation fiabilisée) + inscription sans e-mail** |
 | 11 | `supabase/sql/11_salles_abandonnees.sql` | Ferme les parties abandonnées, rembourse la mise, débloque la création de salle |
+| 12 | `supabase/sql/12_round_secrets.sql` | **Corrige la table `round_secrets`** (colonne `secret` manquante) + audit des colonnes |
 
 Chaque fichier est **autonome et ré-exécutable** : on peut le relancer sans risque, aucune
 donnée n'est supprimée. `08_missions_fix.sql` reconstruit les tables de missions si elles
@@ -64,6 +65,17 @@ confirmation_auto = 1 | comptes_non_confirmes = 0
 5 minutes) et **rembourse les frais d'entrée**. Sans cela, une salle abandonnée bloque
 définitivement la création de nouvelles salles. Le site appelle ensuite `cleanup_my_rooms()`
 automatiquement à l'entrée de l'écran « Jouer ».
+
+`12_round_secrets.sql` corrige l'erreur `column "secret" of relation "round_secrets" does
+not exist` : la table venait d'une ancienne version et n'avait pas la bonne structure. Elle
+est sauvegardée puis reconstruite. Le fichier affiche aussi un audit :
+
+```
+colonnes_round_secrets = round_id, secret, created_at | index_round_secrets = 2
+colonnes_manquantes = []
+```
+
+`colonnes_manquantes = []` signifie que toutes les colonnes utilisées par le moteur existent.
 
 ### 2. Configurer le frontend
 
